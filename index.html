@@ -6,8 +6,17 @@
     <title>AI Chat</title>
     
     <style>
-        #debug-log { position: fixed; top: 0; left: 0; width: 100%; background-color: #ffffe0; border-bottom: 2px solid #ccc; padding: 10px; font-family: monospace; font-size: 12px; color: #333; z-index: 9999; max-height: 35vh; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word; }
-        :root { --background-color: #ffffff; --text-color: #000000; --primary-accent: #1a1a1a; --sidebar-bg: #f5f5f7; --border-color: #e5e5e5; --user-msg-bg: #e9e9eb; --ai-msg-bg: #ffffff; --system-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; --sidebar-width: 280px; }
+        :root {
+            --background-color: #ffffff;
+            --text-color: #000000;
+            --primary-accent: #1a1a1a;
+            --sidebar-bg: #f5f5f7;
+            --border-color: #e5e5e5;
+            --user-msg-bg: #e9e9eb;
+            --ai-msg-bg: #ffffff;
+            --system-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            --sidebar-width: 280px;
+        }
         body, html { margin: 0; padding: 0; font-family: var(--system-font); height: 100%; width: 100%; overflow: hidden; background-color: var(--background-color); color: var(--text-color); }
         #app-container { display: flex; height: 100vh; width: 100vw; position: relative; }
         #sidebar { width: var(--sidebar-width); max-width: 85vw; height: 100%; background-color: var(--sidebar-bg); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; position: fixed; left: 0; top: 0; transform: translateX(calc(-1 * var(--sidebar-width))); transition: transform 0.4s cubic-bezier(0.25, 0.1, 0.25, 1.0); z-index: 1000; will-change: transform; }
@@ -46,11 +55,12 @@
 </head>
 <body>
 
-    <div id="debug-log">Debug Log Initialized...<br></div>
-
     <div id="app-container">
-        <div id="sidebar-overlay"></div> <aside id="sidebar"><div class="sidebar-header"><h2>Chat History</h2><button id="new-chat-btn" title="New Chat">+</button></div><div id="chat-history-list"></div><div class="sidebar-footer"><button id="logout-btn">Logout</button></div></aside>
-        <main id="chat-area"><header id="chat-header"><button id="menu-toggle">☰</button><h1>AI Chat</h1></header><div id="chat-messages"><div class="message-container welcome-message"><p>Welcome! Please login.</p><button id="login-btn">Login with Google</button></div></div>
+        <div id="sidebar-overlay"></div>
+        <aside id="sidebar"><div class="sidebar-header"><h2>Chat History</h2><button id="new-chat-btn" title="New Chat">+</button></div><div id="chat-history-list"></div><div class="sidebar-footer"><button id="logout-btn">Logout</button></div></aside>
+        <main id="chat-area">
+            <header id="chat-header"><button id="menu-toggle">☰</button><h1>AI Chat</h1></header>
+            <div id="chat-messages"><div class="message-container welcome-message"><p>Welcome! Login to start.</p><button id="login-btn">Login with Google</button></div></div>
             <footer id="chat-input-container"><form id="chat-form"><textarea id="chat-input" placeholder="Message AI..." rows="1" required></textarea><button type="submit" id="send-btn" title="Send Message"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button></form></footer>
         </main>
     </div>
@@ -60,60 +70,60 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
     
     <script>
-        const debugLog = document.getElementById('debug-log'); function logToScreen(message) { console.log(message); debugLog.innerHTML += message.replace(/</g, "<").replace(/>/g, ">") + '<br>'; debugLog.scrollTop = debugLog.scrollHeight; }
         document.addEventListener('DOMContentLoaded', () => {
-            logToScreen('DOM content loaded.');
-            const firebaseConfig = { apiKey: "AIzaSyDDdaUMgPSmlkRfjaBDm9SrylWyX7wC2oE", authDomain: "ai-chatbot-b38da.firebaseapp.com", projectId: "ai-chatbot-b38da", storageBucket: "ai-chatbot-b38da.firebasestorage.app", messagingSenderId: "502343320611", appId: "1:502343320611:web:247b096133faf46688dd96", };
-            let auth; try { firebase.initializeApp(firebaseConfig); auth = firebase.auth(); logToScreen('Firebase Initialized.'); } catch (error) { logToScreen('Firebase Init Failed: ' + error); return; }
+            const firebaseConfig = { apiKey: "AIzaSyDDdaUMgPSmlkRfjaBDm9SrylWyX7wC2oE", authDomain: "ai-chatbot-b38da.firebaseapp.com", projectId: "ai-chatbot-b38da", storageBucket: "ai-chatbot-b38da.firebasestorage.app", messagingSenderId: "502343320611", appId: "1:502343320611:web:247b096133faf46688dd96" };
+            firebase.initializeApp(firebaseConfig);
+            const auth = firebase.auth();
             let currentUser = null; let localChatHistory = [];
             const chatForm = document.getElementById('chat-form'); const chatInput = document.getElementById('chat-input'); const chatMessages = document.getElementById('chat-messages');
-            auth.onAuthStateChanged(user => { if (user) { currentUser = user; document.body.classList.add('logged-in'); if (chatMessages.querySelector('.welcome-message')) { startNewChat(); } } else { currentUser = null; document.body.classList.remove('logged-in'); chatMessages.innerHTML = `<div class="message-container welcome-message"><p>Welcome! Login to start.</p><button id="login-btn">Login with Google</button></div>`; document.getElementById('login-btn').addEventListener('click', () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider())); } });
+            auth.onAuthStateChanged(user => { if (user) { currentUser = user; document.body.classList.add('logged-in'); if (chatMessages.querySelector('.welcome-message')) startNewChat(); } else { currentUser = null; document.body.classList.remove('logged-in'); chatMessages.innerHTML = `<div class="message-container welcome-message"><p>Welcome! Login to start.</p><button id="login-btn">Login with Google</button></div>`; document.getElementById('login-btn').addEventListener('click', () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider())); } });
             document.getElementById('logout-btn').addEventListener('click', () => auth.signOut());
             function startNewChat() { localChatHistory = []; chatMessages.innerHTML = ''; chatInput.value = ''; chatInput.style.height = 'auto'; chatInput.focus(); }
             function addMessageToUI(sender, text = '') { const m = document.createElement('div'); m.className = `message-container ${sender}`; const p = document.createElement('p'); p.textContent = text; m.appendChild(p); chatMessages.appendChild(m); chatMessages.scrollTop = chatMessages.scrollHeight; return m; }
             
-            // --- The ULTIMATE Debugging Function ---
+            // --- THE FINAL, WORKING CHAT FUNCTION ---
             async function handleSendMessage(e) {
-                e.preventDefault(); if (!currentUser) return; const userMessage = chatInput.value.trim(); if (!userMessage) return; chatInput.value = ''; chatInput.style.height = 'auto'; addMessageToUI('user', userMessage); localChatHistory.push({ role: 'user', text: userMessage }); const aiMsgContainer = addMessageToUI('ai'); const aiMsgP = aiMsgContainer.querySelector('p'); const cursor = document.createElement('span'); cursor.className = 'cursor'; aiMsgP.appendChild(cursor);
+                e.preventDefault(); if (!currentUser) return; const userMessage = chatInput.value.trim(); if (!userMessage) return;
+                chatInput.value = ''; chatInput.style.height = 'auto';
+                addMessageToUI('user', userMessage); localChatHistory.push({ role: 'user', text: userMessage });
+                const aiMsgContainer = addMessageToUI('ai'); const aiMsgP = aiMsgContainer.querySelector('p'); const cursor = document.createElement('span'); cursor.className = 'cursor'; aiMsgP.appendChild(cursor);
+                
                 try {
                     const response = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: userMessage, history: localChatHistory.slice(0, -1) }) });
-                    if (!response.ok || !response.body) { throw new Error('API response error.'); }
+                    if (!response.ok || !response.body) throw new Error('API response error.');
                     
-                    const reader = response.body.getReader(); const decoder = new TextDecoder(); let aiResponseText = '';
-                    
+                    const reader = response.body.getReader(); const decoder = new TextDecoder();
+                    let fullResponseString = '';
+
+                    // Step 1: Read the entire stream into a single string
                     while (true) {
-                        const { value, done } = await reader.read(); if (done) { logToScreen('STREAM FINISHED.'); break; }
-                        
-                        const chunk = decoder.decode(value, { stream: true });
-                        logToScreen('--- RAW CHUNK RECEIVED ---'); logToScreen(chunk);
-                        
-                        const lines = chunk.split('\n');
-                        for (const line of lines) {
-                            if (line.trim().startsWith('data: ')) {
-                                const jsonString = line.replace(/^data: /, '').trim();
-                                if (jsonString === '[DONE]') continue;
-                                logToScreen(`Found JSON line: [${jsonString}]`);
-                                try {
-                                    const parsed = JSON.parse(jsonString);
-                                    const text = parsed?.candidates?.[0]?.content?.parts?.[0]?.text;
-                                    if (text) {
-                                        logToScreen(`SUCCESS: Found text: "${text}"`);
-                                        aiResponseText += text;
-                                        aiMsgP.textContent = aiResponseText;
-                                        aiMsgP.appendChild(cursor);
-                                        chatMessages.scrollTop = chatMessages.scrollHeight;
-                                    } else {
-                                        logToScreen('INFO: Parsed line did not contain text.');
-                                        logToScreen('Parsed Object: ' + JSON.stringify(parsed));
-                                    }
-                                } catch (e) {
-                                    logToScreen(`ERROR: Failed to parse JSON line. Error: ${e.message}`);
-                                }
-                            }
+                        const { value, done } = await reader.read(); if (done) break;
+                        fullResponseString += decoder.decode(value, { stream: true });
+                    }
+
+                    // Step 2: Parse the complete JSON string
+                    // It will look like "[[{...}, {...}]]" so we remove the outer brackets
+                    const jsonContent = fullResponseString.slice(1, -1);
+                    const responseArray = JSON.parse(`[${jsonContent}]`); // Re-add brackets to form a valid array
+                    let aiResponseText = '';
+
+                    // Step 3: Loop through the array and combine the text parts
+                    for (const item of responseArray) {
+                        const text = item?.candidates?.[0]?.content?.parts?.[0]?.text;
+                        if (text) {
+                            aiResponseText += text;
                         }
                     }
-                    cursor.remove(); localChatHistory.push({ role: 'model', text: aiResponseText });
-                } catch (error) { console.error("AI Error:", error); aiMsgP.textContent = "Sorry, an error occurred."; }
+
+                    // Step 4: Display the final, complete text
+                    aiMsgP.textContent = aiResponseText;
+                    cursor.remove(); // Remove the cursor after displaying
+                    localChatHistory.push({ role: 'model', text: aiResponseText });
+
+                } catch (error) {
+                    console.error("AI Error:", error);
+                    aiMsgP.textContent = "Sorry, a critical error occurred.";
+                }
             }
             
             chatForm.addEventListener('submit', handleSendMessage);
