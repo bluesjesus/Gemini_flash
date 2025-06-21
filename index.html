@@ -25,6 +25,9 @@
         .sidebar-header h2 { margin: 0; font-size: 1.1rem; }
         #new-chat-btn { font-size: 1.5rem; background: none; border: none; cursor: pointer; color: var(--text-color); padding: 0.5rem;}
         #chat-history-list { flex-grow: 1; overflow-y: auto; padding: 0.5rem 0; }
+        .chat-history-item { padding: 0.75rem 1rem; cursor: pointer; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; border-bottom: 1px solid var(--border-color); }
+        .chat-history-item:hover { background-color: #e9e9eb; }
+        .chat-history-item.active { background-color: #dcdce0; font-weight: 500; }
         .sidebar-footer { padding: 1rem; border-top: 1px solid var(--border-color); }
         #logout-btn { width: 100%; padding: 0.75rem; background: var(--primary-accent); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; display: none; }
         body.logged-in #logout-btn { display: block; }
@@ -54,7 +57,6 @@
     </style>
 </head>
 <body>
-
     <div id="app-container">
         <div id="sidebar-overlay"></div>
         <aside id="sidebar"><div class="sidebar-header"><h2>Chat History</h2><button id="new-chat-btn" title="New Chat">+</button></div><div id="chat-history-list"></div><div class="sidebar-footer"><button id="logout-btn">Logout</button></div></aside>
@@ -67,71 +69,143 @@
 
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <!-- IMPORTANT: We now need the REALTIME DATABASE SDK, not Firestore -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const firebaseConfig = { apiKey: "AIzaSyDDdaUMgPSmlkRfjaBDm9SrylWyX7wC2oE", authDomain: "ai-chatbot-b38da.firebaseapp.com", projectId: "ai-chatbot-b38da", storageBucket: "ai-chatbot-b38da.firebasestorage.app", messagingSenderId: "502343320611", appId: "1:502343320611:web:247b096133faf46688dd96" };
+            const firebaseConfig = {
+                apiKey: "AIzaSyDDdaUMgPSmlkRfjaBDm9SrylWyX7wC2oE",
+                authDomain: "ai-chatbot-b38da.firebaseapp.com",
+                projectId: "ai-chatbot-b38da",
+                storageBucket: "ai-chatbot-b38da.firebasestorage.app",
+                messagingSenderId: "502343320611",
+                appId: "1:502343320611:web:247b096133faf46688dd96",
+                // NEW: Add the databaseURL for Realtime Database
+                databaseURL: "https://ai-chatbot-b38da-default-rtdb.firebaseio.com"
+            };
             firebase.initializeApp(firebaseConfig);
             const auth = firebase.auth();
-            let currentUser = null; let localChatHistory = [];
+            const db = firebase.database(); // NEW: Initialize Realtime Database
+            
+            let currentUser = null;
+            let currentChatId = null;
+            let localChatHistory = [];
+
+            const chatHistoryList = document.getElementById('chat-history-list');
             const chatForm = document.getElementById('chat-form'); const chatInput = document.getElementById('chat-input'); const chatMessages = document.getElementById('chat-messages');
-            auth.onAuthStateChanged(user => { if (user) { currentUser = user; document.body.classList.add('logged-in'); if (chatMessages.querySelector('.welcome-message')) startNewChat(); } else { currentUser = null; document.body.classList.remove('logged-in'); chatMessages.innerHTML = `<div class="message-container welcome-message"><p>Welcome! Login to start.</p><button id="login-btn">Login with Google</button></div>`; document.getElementById('login-btn').addEventListener('click', () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider())); } });
+
+            auth.onAuthStateChanged(user => {
+                if (user) {
+                    currentUser = user; document.body.classList.add('logged-in');
+                    loadChatHistory(); startNewChat();
+                } else {
+                    currentUser = null; currentChatId = null; document.body.classList.remove('logged-in');
+                    chatHistoryList.innerHTML = '';
+                    chatMessages.innerHTML = `<div class="message-container welcome-message"><p>Welcome! Login to start.</p><button id="login-btn">Login with Google</button></div>`;
+                    document.getElementById('login-btn').addEventListener('click', () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()));
+                }
+            });
             document.getElementById('logout-btn').addEventListener('click', () => auth.signOut());
-            function startNewChat() { localChatHistory = []; chatMessages.innerHTML = ''; chatInput.value = ''; chatInput.style.height = 'auto'; chatInput.focus(); }
+
+            // --- Chat History Functions (for Realtime Database) ---
+            function loadChatHistory() {
+                if (!currentUser) return;
+                const chatsRef = db.ref(`chats/${currentUser.uid}`);
+                // Listen for changes and order by timestamp
+                chatsRef.orderByChild('timestamp').on('value', snapshot => {
+                    chatHistoryList.innerHTML = '';
+                    let chats = [];
+                    snapshot.forEach(childSnapshot => {
+                        chats.push({ id: childSnapshot.key, ...childSnapshot.val() });
+                    });
+                    // Reverse to show newest first
+                    chats.reverse().forEach(chat => {
+                        const title = chat.messages[0]?.text || 'New Chat';
+                        const historyItem = document.createElement('div');
+                        historyItem.className = 'chat-history-item';
+                        historyItem.textContent = title;
+                        historyItem.dataset.chatId = chat.id;
+                        historyItem.addEventListener('click', () => loadChat(chat.id));
+                        chatHistoryList.appendChild(historyItem);
+                    });
+                });
+            }
+            
+            async function loadChat(chatId) {
+                if (!currentUser) return;
+                const chatRef = db.ref(`chats/${currentUser.uid}/${chatId}`);
+                const snapshot = await chatRef.get();
+                if (!snapshot.exists()) return;
+
+                const chat = snapshot.val();
+                localChatHistory = chat.messages || [];
+                currentChatId = chatId;
+
+                chatMessages.innerHTML = '';
+                localChatHistory.forEach(msg => addMessageToUI(msg.role === 'model' ? 'ai' : 'user', msg.text));
+                
+                document.querySelectorAll('.chat-history-item').forEach(item => {
+                    item.classList.toggle('active', item.dataset.chatId === chatId);
+                });
+                closeSidebar();
+            }
+
+            function saveChat() {
+                if (!currentUser || localChatHistory.length < 2) return;
+                const userChatsRef = db.ref(`chats/${currentUser.uid}`);
+                const chatData = {
+                    messages: localChatHistory,
+                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                };
+                if (currentChatId) {
+                    userChatsRef.child(currentChatId).update(chatData);
+                } else {
+                    const newChatRef = userChatsRef.push(chatData);
+                    currentChatId = newChatRef.key;
+                }
+            }
+
+            document.getElementById('new-chat-btn').addEventListener('click', startNewChat);
+
+            function startNewChat() {
+                currentChatId = null; localChatHistory = []; chatMessages.innerHTML = ''; chatInput.value = ''; chatInput.style.height = 'auto'; chatInput.focus();
+                document.querySelectorAll('.chat-history-item').forEach(item => item.classList.remove('active'));
+                closeSidebar();
+            }
+
             function addMessageToUI(sender, text = '') { const m = document.createElement('div'); m.className = `message-container ${sender}`; const p = document.createElement('p'); p.textContent = text; m.appendChild(p); chatMessages.appendChild(m); chatMessages.scrollTop = chatMessages.scrollHeight; return m; }
             
-            // --- THE FINAL, WORKING CHAT FUNCTION ---
             async function handleSendMessage(e) {
                 e.preventDefault(); if (!currentUser) return; const userMessage = chatInput.value.trim(); if (!userMessage) return;
                 chatInput.value = ''; chatInput.style.height = 'auto';
                 addMessageToUI('user', userMessage); localChatHistory.push({ role: 'user', text: userMessage });
                 const aiMsgContainer = addMessageToUI('ai'); const aiMsgP = aiMsgContainer.querySelector('p'); const cursor = document.createElement('span'); cursor.className = 'cursor'; aiMsgP.appendChild(cursor);
-                
                 try {
                     const response = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: userMessage, history: localChatHistory.slice(0, -1) }) });
                     if (!response.ok || !response.body) throw new Error('API response error.');
                     
                     const reader = response.body.getReader(); const decoder = new TextDecoder();
                     let fullResponseString = '';
+                    while (true) { const { value, done } = await reader.read(); if (done) break; fullResponseString += decoder.decode(value, { stream: true }); }
 
-                    // Step 1: Read the entire stream into a single string
-                    while (true) {
-                        const { value, done } = await reader.read(); if (done) break;
-                        fullResponseString += decoder.decode(value, { stream: true });
-                    }
-
-                    // Step 2: Parse the complete JSON string
-                    // It will look like "[[{...}, {...}]]" so we remove the outer brackets
                     const jsonContent = fullResponseString.slice(1, -1);
-                    const responseArray = JSON.parse(`[${jsonContent}]`); // Re-add brackets to form a valid array
+                    const responseArray = JSON.parse(`[${jsonContent}]`);
                     let aiResponseText = '';
-
-                    // Step 3: Loop through the array and combine the text parts
-                    for (const item of responseArray) {
-                        const text = item?.candidates?.[0]?.content?.parts?.[0]?.text;
-                        if (text) {
-                            aiResponseText += text;
-                        }
-                    }
-
-                    // Step 4: Display the final, complete text
+                    for (const item of responseArray) { const text = item?.candidates?.[0]?.content?.parts?.[0]?.text; if (text) aiResponseText += text; }
+                    
                     aiMsgP.textContent = aiResponseText;
-                    cursor.remove(); // Remove the cursor after displaying
+                    cursor.remove();
                     localChatHistory.push({ role: 'model', text: aiResponseText });
-
-                } catch (error) {
-                    console.error("AI Error:", error);
-                    aiMsgP.textContent = "Sorry, a critical error occurred.";
-                }
+                    saveChat(); // Save the conversation
+                } catch (error) { console.error("AI Error:", error); aiMsgP.textContent = "Sorry, a critical error occurred."; }
             }
             
             chatForm.addEventListener('submit', handleSendMessage);
             chatInput.addEventListener('input', () => { chatInput.style.height = 'auto'; chatInput.style.height = `${chatInput.scrollHeight}px`; });
             chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); chatForm.requestSubmit(); } });
             
-            // Sidebar logic (minified for space)
-            const sidebar = document.getElementById('sidebar'); const menuToggle = document.getElementById('menu-toggle'); const sidebarOverlay = document.getElementById('sidebar-overlay'); let isDragging = false, startX = 0, currentTranslate = 0; const sidebarWidth = () => sidebar.offsetWidth; const openSidebar = () => { sidebar.style.transform = 'translateX(0)'; document.body.classList.add('sidebar-open'); }; const closeSidebar = () => { sidebar.style.transform = `translateX(-${sidebarWidth()}px)`; document.body.classList.remove('sidebar-open'); }; menuToggle.addEventListener('click', (e) => { e.stopPropagation(); const isOpen = document.body.classList.contains('sidebar-open'); isOpen ? closeSidebar() : openSidebar(); }); sidebarOverlay.addEventListener('click', closeSidebar); const dragStart = (e) => { const t = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX, s = document.body.classList.contains('sidebar-open'); if (s || t < 40) { isDragging = true; startX = t; sidebar.classList.add('no-transition'); currentTranslate = s ? 0 : -sidebarWidth(); }}; const dragMove = (e) => { if (!isDragging) return; const t = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX, n = t - startX; let s = Math.min(0, Math.max(-sidebarWidth(), currentTranslate + n)); sidebar.style.transform = `translateX(${s}px)`; sidebarOverlay.style.opacity = 1 - (Math.abs(s) / sidebarWidth()); }; const dragEnd = (e) => { if (!isDragging) return; isDragging = false; sidebar.classList.remove('no-transition'); sidebarOverlay.style.opacity = ''; const t = new DOMMatrix(getComputedStyle(sidebar).transform).m41; t > -sidebarWidth() / 2 ? openSidebar() : closeSidebar(); }; document.body.addEventListener('mousedown', dragStart); document.body.addEventListener('mousemove', dragMove); document.body.addEventListener('mouseup', dragEnd); document.body.addEventListener('mouseleave', dragEnd); document.body.addEventListener('touchstart', dragStart, { passive: true }); document.body.addEventListener('touchmove', dragMove, { passive: true }); document.body.addEventListener('touchend', dragEnd); document.getElementById('new-chat-btn').addEventListener('click', startNewChat);
+            const sidebar = document.getElementById('sidebar'); const menuToggle = document.getElementById('menu-toggle'); const sidebarOverlay = document.getElementById('sidebar-overlay'); let isDragging = false, startX = 0, currentTranslate = 0; const sidebarWidth = () => sidebar.offsetWidth; const openSidebar = () => { sidebar.style.transform = 'translateX(0)'; document.body.classList.add('sidebar-open'); }; const closeSidebar = () => { sidebar.style.transform = `translateX(-${sidebarWidth()}px)`; document.body.classList.remove('sidebar-open'); }; menuToggle.addEventListener('click', (e) => { e.stopPropagation(); const isOpen = document.body.classList.contains('sidebar-open'); isOpen ? closeSidebar() : openSidebar(); }); sidebarOverlay.addEventListener('click', closeSidebar); const dragStart = (e) => { const t = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX, s = document.body.classList.contains('sidebar-open'); if (s || t < 40) { isDragging = true; startX = t; sidebar.classList.add('no-transition'); currentTranslate = s ? 0 : -sidebarWidth(); }}; const dragMove = (e) => { if (!isDragging) return; const t = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX, n = t - startX; let s = Math.min(0, Math.max(-sidebarWidth(), currentTranslate + n)); sidebar.style.transform = `translateX(${s}px)`; sidebarOverlay.style.opacity = 1 - (Math.abs(s) / sidebarWidth()); }; const dragEnd = (e) => { if (!isDragging) return; isDragging = false; sidebar.classList.remove('no-transition'); sidebarOverlay.style.opacity = ''; const t = new DOMMatrix(getComputedStyle(sidebar).transform).m41; t > -sidebarWidth() / 2 ? openSidebar() : closeSidebar(); }; document.body.addEventListener('mousedown', dragStart); document.body.addEventListener('mousemove', dragMove); document.body.addEventListener('mouseup', dragEnd); document.body.addEventListener('mouseleave', dragEnd); document.body.addEventListener('touchstart', dragStart, { passive: true }); document.body.addEventListener('touchmove', dragMove, { passive: true }); document.body.addEventListener('touchend', dragEnd);
         });
     </script>
 </body>
