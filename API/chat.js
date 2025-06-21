@@ -1,37 +1,111 @@
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+// File: api/chat.js
 
-export default async function handler(req, res) {
+// We need to use the Edge runtime for streaming responses with Vercel, which is faster.
+export const config = {
+  runtime: 'edge',
+};
+
+// Main function handler
+export default async function handler(req) {
+  // 1. We only accept POST requests
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
   }
 
   try {
-    const { messages, userId, chatId } = req.body;
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-    
-    // Format chat history
-    const chatHistory = messages.map(msg => ({
-      role: msg.role,
-      parts: msg.parts
+    // 2. Extract the message and history from the request body
+    const { message, history } = await req.json();
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+
+    if (!geminiApiKey) {
+        return new Response(JSON.stringify({ error: 'API key not configured on Vercel' }), { status: 500 });
+    }
+      
+    if (!message) {
+        return new Response(JSON.stringify({ error: 'Message is required' }), { status: 400 });
+    }
+
+    // 3. Format the history for the Gemini API
+    // The Gemini API expects roles of 'user' and 'model'
+    const formattedHistory = (history || []).map(item => ({
+      role: item.role, // 'user' or 'model'
+      parts: [{ text: item.text }],
     }));
-    
-    const chat = model.startChat({
-      history: chatHistory,
-      generationConfig: {
-        maxOutputTokens: 1000,
+
+    // 4. Call the Gemini API using the streaming endpoint
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:streamGenerateContent?key=${geminiApiKey}`;
+
+    const apiResponse = await fetch(geminiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [...formattedHistory, { role: 'user', parts: [{ text: message }] }],
+      }),
+    });
+
+    if (!apiResponse.ok) {
+        const errorBody = await apiResponse.text();
+        console.error("Gemini API Error:", errorBody);
+        return new Response(JSON.stringify({ error: 'Failed to fetch from Gemini API', details: errorBody }), { status: apiResponse.status });
+    }
+
+    // 5. Create a new ReadableStream to pipe the Gemini response back to your frontend
+    const readableStream = new ReadableStream({
+      async start(controller) {
+        const reader = apiResponse.body.getReader();
+        const decoder = new TextDecoder();
+
+        function push() {
+          reader.read().then(({ done, value }) => {
+            if (done) {
+              controller.close();
+              return;
+            }
+            // The streamed response from Gemini is a series of JSON-like chunks.
+            // We need to decode them and parse out the actual text content.
+            const chunk = decoder.decode(value, { stream: true });
+            
+            // Clean up the chunk to extract valid JSON parts
+            const jsonParts = chunk
+              .replace(/^data: /gm, '')
+              .split('\n')
+              .filter(s => s.trim().startsWith('{'))
+              .map(s => s.trim());
+
+            for (const part of jsonParts) {
+              try {
+                const parsed = JSON.parse(part);
+                const text = parsed?.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (text) {
+                  // Send just the text content to the browser
+                  controller.enqueue(new TextEncoder().encode(text));
+                }
+              } catch (e) {
+                // Ignore parsing errors for incomplete chunks
+              }
+            }
+            
+            push();
+          }).catch(err => {
+            console.error('Stream reading error:', err);
+            controller.error(err);
+          });
+        }
+        
+        push();
       },
     });
-    
-    // Send only the last message as prompt
-    const lastMessage = messages[messages.length - 1].parts[0].text;
-    const result = await chat.sendMessage(lastMessage);
-    const response = await result.response;
-    const text = response.text();
-    
-    res.status(200).json({ text });
+
+    // 6. Return the stream to the client
+    return new Response(readableStream, {
+      headers: { 
+          'Content-Type': 'text/plain; charset=utf-8',
+          'X-Content-Type-Options': 'nosniff', // Security header
+      },
+    });
+
   } catch (error) {
-    console.error('Gemini API error:', error);
-    res.status(500).json({ error: 'Failed to generate response' });
+    console.error('Handler Error:', error);
+    return new Response(JSON.stringify({ error: 'An internal error occurred' }), { status: 500 });
   }
 }
