@@ -123,10 +123,11 @@
             function addMessageToUI(sender, text = '') {
                 const m = document.createElement('div');
                 m.className = `message-container ${sender}`;
-                // Use a wrapper for AI content to handle complex HTML
                 const contentWrapper = document.createElement('div');
                 contentWrapper.className = 'content-wrapper';
-                contentWrapper.textContent = text;
+                if (sender === 'user') {
+                    contentWrapper.textContent = text;
+                }
                 m.appendChild(contentWrapper);
                 chatMessages.appendChild(m);
                 chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -146,18 +147,17 @@
                 let html = placeholderText
                     .split('\n')
                     .map(line => {
-                        if (line.trim() === '') return '<br>';
+                        if (line.trim() === '') return '';
                         return '<p>' + line
                             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                            .replace(/\*(.*?)\*/g, '<em>$1</em>') + '</p>';
+                            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                            .replace(/`(.*?)`/g, `<code>${escapeHtml('$1')}</code>`) + '</p>';
                     }).join('');
 
-                codeBlocks.forEach((block, index) => {
-                    const pre = `<pre class="language-${block.lang}"><code class="language-${block.lang}">${escapeHtml(block.code)}</code></pre>`;
-                    html = html.replace(`<p>{{CODE_BLOCK_${index}}}</p>`, pre)
-                               .replace(`{{CODE_BLOCK_${index}}}`, pre);
+                return html.replace(/<p>{{CODE_BLOCK_(\d+)}}<\/p>/g, (match, index) => {
+                    const block = codeBlocks[parseInt(index, 10)];
+                    return `<pre class="language-${block.lang}"><code class="language-${block.lang}">${escapeHtml(block.code)}</code></pre>`;
                 });
-                return html;
             }
 
             function addCopyButtons(container) {
@@ -178,52 +178,25 @@
                 });
             }
 
-            // --- THE FINAL, ROBUST RENDERING LOGIC ---
-            async function renderResponse(container, fullText, onComplete) {
-                const segments = fullText.split(/(```[\s\S]*?```)/g);
+            // --- THE FINAL, CORRECTED STREAMING FUNCTION ---
+            function streamText(element, text, onComplete) {
+                const words = text.split(/(\s+)/);
+                let i = 0;
+                element.innerHTML = '';
                 
-                for (const segment of segments) {
-                    if (segment.startsWith('```')) {
-                        // It's a code block, render it instantly
-                        const match = segment.match(/```(\w*)\n([\s\S]*?)```/);
-                        if (match) {
-                            const pre = document.createElement('pre');
-                            const code = document.createElement('code');
-                            const lang = match[1].trim().toLowerCase() || 'text';
-                            pre.className = `language-${lang}`;
-                            code.className = `language-${lang}`;
-                            code.textContent = match[2];
-                            pre.appendChild(code);
-                            container.appendChild(pre);
-                            addCopyButtons(container);
-                            Prism.highlightElement(code);
-                        }
+                function renderNext() {
+                    if (i < words.length) {
+                        element.appendChild(document.createTextNode(words[i]));
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                        i++;
+                        requestAnimationFrame(renderNext);
                     } else {
-                        // It's plain text, stream it word-by-word
-                        const p = document.createElement('p');
-                        container.appendChild(p);
-                        await streamTextSegment(p, segment);
+                        // This is the key: Format the text AFTER streaming is done.
+                        element.innerHTML = markdownParse(element.textContent);
+                        if (onComplete) onComplete();
                     }
                 }
-                if (onComplete) onComplete();
-            }
-
-            function streamTextSegment(element, text) {
-                return new Promise(resolve => {
-                    const words = text.split(/(\s+)/);
-                    let i = 0;
-                    function renderNext() {
-                        if (i < words.length) {
-                            element.appendChild(document.createTextNode(words[i]));
-                            chatMessages.scrollTop = chatMessages.scrollHeight;
-                            i++;
-                            requestAnimationFrame(renderNext);
-                        } else {
-                            resolve();
-                        }
-                    }
-                    renderNext();
-                });
+                renderNext();
             }
 
             async function handleSendMessage(e) {
@@ -233,7 +206,6 @@
                 
                 const aiMsgContainer = addMessageToUI('ai', '');
                 const contentWrapper = aiMsgContainer.querySelector('.content-wrapper');
-                contentWrapper.textContent = ''; // Clear initial text
                 
                 try {
                     const response = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: userMessage, history: localChatHistory.slice(0, -1) }) });
@@ -248,7 +220,9 @@
                     let aiResponseText = '';
                     for (const item of responseArray) { const text = item?.candidates?.[0]?.content?.parts?.[0]?.text; if (text) aiResponseText += text; }
                     
-                    await renderResponse(contentWrapper, aiResponseText, () => {
+                    streamText(contentWrapper, aiResponseText, () => {
+                        addCopyButtons(contentWrapper);
+                        Prism.highlightAllUnder(contentWrapper);
                         localChatHistory.push({ role: 'model', text: aiResponseText });
                         saveChat();
                     });
@@ -260,7 +234,6 @@
             chatInput.addEventListener('input', () => { chatInput.style.height = 'auto'; chatInput.style.height = `${chatInput.scrollHeight}px`; });
             chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); chatForm.requestSubmit(); } });
             
-            // Sidebar logic
             const sidebar = document.getElementById('sidebar'); const menuToggle = document.getElementById('menu-toggle'); const sidebarOverlay = document.getElementById('sidebar-overlay'); let isDragging = false, startX = 0, currentTranslate = 0; const sidebarWidth = () => sidebar.offsetWidth; const openSidebar = () => { sidebar.style.transform = 'translateX(0)'; document.body.classList.add('sidebar-open'); }; const closeSidebar = () => { sidebar.style.transform = `translateX(-${sidebarWidth()}px)`; document.body.classList.remove('sidebar-open'); }; menuToggle.addEventListener('click', (e) => { e.stopPropagation(); const isOpen = document.body.classList.contains('sidebar-open'); isOpen ? closeSidebar() : openSidebar(); }); sidebarOverlay.addEventListener('click', closeSidebar); const dragStart = (e) => { const t = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX, s = document.body.classList.contains('sidebar-open'); if (s || t < 40) { isDragging = true; startX = t; sidebar.classList.add('no-transition'); currentTranslate = s ? 0 : -sidebarWidth(); }}; const dragMove = (e) => { if (!isDragging) return; const t = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX, n = t - startX; let s = Math.min(0, Math.max(-sidebarWidth(), currentTranslate + n)); sidebar.style.transform = `translateX(${s}px)`; sidebarOverlay.style.opacity = 1 - (Math.abs(s) / sidebarWidth()); }; const dragEnd = (e) => { if (!isDragging) return; isDragging = false; sidebar.classList.remove('no-transition'); sidebarOverlay.style.opacity = ''; const t = new DOMMatrix(getComputedStyle(sidebar).transform).m41; t > -sidebarWidth() / 2 ? openSidebar() : closeSidebar(); }; document.body.addEventListener('mousedown', dragStart); document.body.addEventListener('mousemove', dragMove); document.body.addEventListener('mouseup', dragEnd); document.body.addEventListener('mouseleave', dragEnd); document.body.addEventListener('touchstart', dragStart, { passive: true }); document.body.addEventListener('touchmove', dragMove, { passive: true }); document.body.addEventListener('touchend', dragEnd);
         });
     </script>
