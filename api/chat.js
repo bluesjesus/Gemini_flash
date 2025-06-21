@@ -33,7 +33,7 @@ export default async function handler(req) {
     }));
 
     // 4. Call the Gemini API using the streaming endpoint
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-:GenerateContent?key=${geminiApiKey}`;
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-:GenerateContent?key=GEMINI_API_KEY`;
 
     const apiResponse = await fetch(geminiUrl, {
       method: 'POST',
