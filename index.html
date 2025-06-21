@@ -32,8 +32,7 @@
         .message-container p { margin: 0; }
         .message-container.user { background-color: var(--user-msg-bg); align-self: flex-end; border-bottom-right-radius: 4px; }
         .message-container.ai { background-color: var(--ai-msg-bg); align-self: flex-start; border: 1px solid var(--border-color); border-bottom-left-radius: 4px; }
-        .message-container.ai .cursor { display: inline-block; width: 8px; height: 1.1em; background-color: var(--text-color); animation: blink 1s step-end infinite; vertical-align: text-bottom; }
-        @keyframes blink { from, to { background-color: transparent; } 50% { background-color: var(--text-color); } }
+        .message-container.ai .cursor { display: none; } /* Cursor is not needed for non-streaming */
         .welcome-message { align-self: center; text-align: center; margin-top: 2rem; border: none; }
         #login-btn { margin-top: 1rem; padding: 0.75rem 1.5rem; background-color: var(--primary-accent); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; }
         #chat-input-container { padding: 0.75rem 1rem; border-top: 1px solid var(--border-color); background-color: var(--background-color); }
@@ -45,10 +44,9 @@
     </style>
 </head>
 <body>
-
     <div id="debug-log">Debug Log Initialized...<br></div>
-
     <div id="app-container">
+        <!-- HTML structure is the same -->
         <div id="sidebar-overlay"></div> <aside id="sidebar"><div class="sidebar-header"><h2>Chat History</h2><button id="new-chat-btn" title="New Chat">+</button></div><div id="chat-history-list"></div><div class="sidebar-footer"><button id="logout-btn">Logout</button></div></aside>
         <main id="chat-area"><header id="chat-header"><button id="menu-toggle">☰</button><h1>AI Chat</h1></header><div id="chat-messages"><div class="message-container welcome-message"><p>Welcome! Please login.</p><button id="login-btn">Login with Google</button></div></div>
             <footer id="chat-input-container"><form id="chat-form"><textarea id="chat-input" placeholder="Message AI..." rows="1" required></textarea><button type="submit" id="send-btn" title="Send Message"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button></form></footer>
@@ -66,42 +64,43 @@
             const firebaseConfig = { apiKey: "AIzaSyDDdaUMgPSmlkRfjaBDm9SrylWyX7wC2oE", authDomain: "ai-chatbot-b38da.firebaseapp.com", projectId: "ai-chatbot-b38da", storageBucket: "ai-chatbot-b38da.firebasestorage.app", messagingSenderId: "502343320611", appId: "1:502343320611:web:247b096133faf46688dd96", };
             let auth; try { firebase.initializeApp(firebaseConfig); auth = firebase.auth(); logToScreen('Firebase app initialized successfully.'); } catch (error) { logToScreen('--- FIREBASE INIT FAILED ---'); logToScreen(error.toString()); return; }
             const db = firebase.firestore(); const sidebar = document.getElementById('sidebar'); const menuToggle = document.getElementById('menu-toggle'); const sidebarOverlay = document.getElementById('sidebar-overlay'); const chatForm = document.getElementById('chat-form'); const chatInput = document.getElementById('chat-input'); const chatMessages = document.getElementById('chat-messages'); let currentUser = null; let localChatHistory = [];
-            logToScreen('Setting up auth state listener...'); auth.onAuthStateChanged(user => { if (user) { logToScreen(`Auth state changed: User LOGGED IN (${user.displayName}).`); currentUser = user; document.body.classList.add('logged-in'); if (chatMessages.querySelector('.welcome-message')) { startNewChat(); } } else { logToScreen('Auth state changed: User is LOGGED OUT.'); currentUser = null; document.body.classList.remove('logged-in'); chatMessages.innerHTML = `<div class="message-container welcome-message"><p>Welcome! Login to start.</p><button id="login-btn">Login with Google</button></div>`; const loginBtn = document.getElementById('login-btn'); if (loginBtn) { logToScreen('Login button found. Attaching click listener...'); loginBtn.addEventListener('click', () => { logToScreen('Login button clicked. Calling signInWithPopup...'); const provider = new firebase.auth.GoogleAuthProvider(); auth.signInWithPopup(provider).catch(error => { logToScreen('--- LOGIN FAILED ---'); logToScreen('Error Code: ' + error.code); logToScreen('Error Message: ' + error.message); }); }); logToScreen('Click listener attached.'); } else { logToScreen('--- ERROR: Login button not found! ---'); } closeSidebar(); } }); document.getElementById('logout-btn').addEventListener('click', () => auth.signOut());
+            logToScreen('Setting up auth state listener...'); auth.onAuthStateChanged(user => { if (user) { logToScreen(`Auth state changed: User LOGGED IN (${user.displayName}).`); currentUser = user; document.body.classList.add('logged-in'); if (chatMessages.querySelector('.welcome-message')) { startNewChat(); } } else { logToScreen('Auth state changed: User is LOGGED OUT.'); currentUser = null; document.body.classList.remove('logged-in'); chatMessages.innerHTML = `<div class="message-container welcome-message"><p>Welcome! Login to start.</p><button id="login-btn">Login with Google</button></div>`; const loginBtn = document.getElementById('login-btn'); if (loginBtn) { loginBtn.addEventListener('click', () => { const provider = new firebase.auth.GoogleAuthProvider(); auth.signInWithPopup(provider).catch(error => { logToScreen(`LOGIN FAILED: ${error.code}`); }); }); } closeSidebar(); } }); document.getElementById('logout-btn').addEventListener('click', () => auth.signOut());
             let isDragging = false, startX = 0, currentTranslate = 0; const sidebarWidth = () => sidebar.offsetWidth; const openSidebar = () => { sidebar.style.transform = 'translateX(0)'; document.body.classList.add('sidebar-open'); }; const closeSidebar = () => { sidebar.style.transform = `translateX(-${sidebarWidth()}px)`; document.body.classList.remove('sidebar-open'); }; menuToggle.addEventListener('click', (e) => { e.stopPropagation(); const isOpen = document.body.classList.contains('sidebar-open'); isOpen ? closeSidebar() : openSidebar(); }); sidebarOverlay.addEventListener('click', closeSidebar); const dragStart = (e) => { const t = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX, s = document.body.classList.contains('sidebar-open'); if (s || t < 40) { isDragging = true; startX = t; sidebar.classList.add('no-transition'); currentTranslate = s ? 0 : -sidebarWidth(); }}; const dragMove = (e) => { if (!isDragging) return; const t = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX, n = t - startX; let s = Math.min(0, Math.max(-sidebarWidth(), currentTranslate + n)); sidebar.style.transform = `translateX(${s}px)`; sidebarOverlay.style.opacity = 1 - (Math.abs(s) / sidebarWidth()); }; const dragEnd = (e) => { if (!isDragging) return; isDragging = false; sidebar.classList.remove('no-transition'); sidebarOverlay.style.opacity = ''; const t = new DOMMatrix(getComputedStyle(sidebar).transform).m41; t > -sidebarWidth() / 2 ? openSidebar() : closeSidebar(); }; document.body.addEventListener('mousedown', dragStart); document.body.addEventListener('mousemove', dragMove); document.body.addEventListener('mouseup', dragEnd); document.body.addEventListener('mouseleave', dragEnd); document.body.addEventListener('touchstart', dragStart, { passive: true }); document.body.addEventListener('touchmove', dragMove, { passive: true }); document.body.addEventListener('touchend', dragEnd);
             document.getElementById('new-chat-btn').addEventListener('click', startNewChat); function startNewChat() { localChatHistory = []; chatMessages.innerHTML = ''; chatInput.value = ''; chatInput.style.height = 'auto'; chatInput.focus(); closeSidebar(); logToScreen('New chat started.'); }
             function addMessageToUI(sender, text = '') { const m = document.createElement('div'); m.className = `message-container ${sender}`; const p = document.createElement('p'); p.textContent = text; m.appendChild(p); chatMessages.appendChild(m); chatMessages.scrollTop = chatMessages.scrollHeight; return m; }
+            
+            // --- KEY CHANGE: Updated function for NON-STREAMING response ---
             async function handleSendMessage(e) {
-                e.preventDefault(); if (!currentUser) return; const userMessage = chatInput.value.trim(); if (!userMessage) return; chatInput.value = ''; chatInput.style.height = 'auto'; addMessageToUI('user', userMessage); localChatHistory.push({ role: 'user', text: userMessage }); const aiMsgContainer = addMessageToUI('ai'); const aiMsgP = aiMsgContainer.querySelector('p'); const cursor = document.createElement('span'); cursor.className = 'cursor'; aiMsgP.appendChild(cursor);
+                e.preventDefault(); if (!currentUser) return; const userMessage = chatInput.value.trim(); if (!userMessage) return; chatInput.value = ''; chatInput.style.height = 'auto'; addMessageToUI('user', userMessage); localChatHistory.push({ role: 'user', text: userMessage }); const aiMsgContainer = addMessageToUI('ai', 'Thinking...');
                 try {
-                    logToScreen('Sending message to /api/chat...'); const response = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: userMessage, history: localChatHistory.slice(0, -1) }) });
-                    logToScreen(`API response status: ${response.status}`); if (!response.ok || !response.body) { const errorText = await response.text(); logToScreen(`Server error: ${errorText}`); throw new Error(`API response error. Status: ${response.status}`); }
-                    let aiResponseText = ''; const reader = response.body.getReader(); const decoder = new TextDecoder();
-                    while (true) {
-                        const { value, done } = await reader.read(); if (done) { logToScreen('API stream finished.'); break; }
-                        const chunk = decoder.decode(value, { stream: true });
-                        
-                        // --- MOST IMPORTANT LINE ---
-                        logToScreen(`RAW CHUNK: [${chunk}]`);
-                        
-                        const jsonParts = chunk.match(/\{[\s\S]*?\}/g);
-                        if (jsonParts) {
-                            for (const part of jsonParts) {
-                                try {
-                                    const parsed = JSON.parse(part);
-                                    const text = parsed?.candidates?.[0]?.content?.parts?.[0]?.text;
-                                    if (text) {
-                                        aiResponseText += text;
-                                        aiMsgP.textContent = aiResponseText;
-                                        aiMsgP.appendChild(cursor);
-                                        chatMessages.scrollTop = chatMessages.scrollHeight;
-                                    }
-                                } catch (e) { /* Ignore incomplete JSON parts */ }
-                            }
-                        }
+                    logToScreen('Sending message to /api/chat (non-streaming)...');
+                    const response = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: userMessage, history: localChatHistory.slice(0, -1) }) });
+                    
+                    const data = await response.json();
+                    
+                    // --- MOST IMPORTANT LINE ---
+                    logToScreen('FULL RESPONSE JSON: ' + JSON.stringify(data, null, 2));
+
+                    // Check for text in the response
+                    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+                    
+                    if (text) {
+                        aiMsgContainer.querySelector('p').textContent = text;
+                        localChatHistory.push({ role: 'model', text: text });
+                    } else {
+                        // If there's no text, show the reason why.
+                        const finishReason = data?.candidates?.[0]?.finishReason || "UNKNOWN_REASON";
+                        const safetyRatings = JSON.stringify(data?.candidates?.[0]?.safetyRatings || "No safety ratings.");
+                        aiMsgContainer.querySelector('p').textContent = `Response was empty. Reason: ${finishReason}. Ratings: ${safetyRatings}`;
+                        logToScreen(`Empty response. Finish Reason: ${finishReason}`);
                     }
-                    cursor.remove(); localChatHistory.push({ role: 'model', text: aiResponseText });
-                } catch (error) { logToScreen('--- CHAT FAILED (catch block) ---'); logToScreen(`Error: ${error.message}`); aiMsgP.textContent = "Sorry, an error occurred. Please try again."; }
+
+                } catch (error) {
+                    logToScreen('--- CHAT FAILED (catch block) ---'); logToScreen(`Error: ${error.message}`);
+                    aiMsgContainer.querySelector('p').textContent = "Sorry, an error occurred. Please try again.";
+                }
             }
+
             chatForm.addEventListener('submit', handleSendMessage);
             chatInput.addEventListener('input', () => { chatInput.style.height = 'auto'; chatInput.style.height = `${chatInput.scrollHeight}px`; });
             chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); chatForm.requestSubmit(); } });
