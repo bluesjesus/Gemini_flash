@@ -5,9 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>AI Chat</title>
     
-    <!-- Prism.js for Syntax Highlighting -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
-    
     <style>
         :root {
             --background-color: #ffffff;
@@ -19,7 +16,6 @@
             --ai-msg-bg: transparent; 
             --system-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             --sidebar-width: 280px;
-            --code-bg: #2d2d2d;
         }
         body, html { margin: 0; padding: 0; font-family: var(--system-font); height: 100%; width: 100%; overflow: hidden; background-color: var(--background-color); color: var(--text-color); }
         #app-container { display: flex; height: 100vh; width: 100vw; position: relative; }
@@ -47,20 +43,11 @@
         @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
         .message-container p { margin: 0; }
         .message-container.user { background-color: var(--user-msg-bg); align-self: flex-end; border-bottom-right-radius: 4px; }
-        .message-container.ai { background-color: var(--ai-msg-bg); align-self: flex-start; border: none; padding: 0; width: 100%; max-width: 100%; }
-        .message-container.ai p { padding: 0 1.1rem; }
+        .message-container.ai { background-color: var(--ai-msg-bg); align-self: flex-start; border: none; padding-left: 0; padding-right: 0; }
         .message-container.ai strong, .message-container.ai b { font-weight: 600; }
         .message-container.ai h1, .message-container.ai h2, .message-container.ai h3 { margin-top: 1rem; margin-bottom: 0.5rem; }
         .welcome-message { align-self: center; text-align: center; margin-top: 2rem; border: none !important; padding: 0 !important; }
         #login-btn { margin-top: 1rem; padding: 0.75rem 1.5rem; background-color: var(--primary-accent); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; }
-        
-        /* Code Block Styling */
-        pre { background-color: var(--code-bg) !important; color: #f8f8f2; padding: 1rem; border-radius: 8px; overflow-x: auto; margin: 1rem 0; position: relative; }
-        .message-container.ai code { font-family: 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', monospace; }
-        .copy-code-btn { position: absolute; top: 0.5rem; right: 0.5rem; background: #444; color: #fff; border: none; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem; opacity: 0; transition: opacity 0.2s; }
-        pre:hover .copy-code-btn { opacity: 0.7; }
-        .copy-code-btn:hover { opacity: 1; }
-
         #chat-input-container { padding: 0.75rem 1rem; border-top: 1px solid var(--border-color); background-color: var(--background-color); }
         #chat-form { display: flex; align-items: flex-end; gap: 0.75rem; }
         #chat-input { flex-grow: 1; border: 1px solid #ddd; background-color: #f0f0f0; border-radius: 20px; padding: 0.6rem 1rem; font-size: 1rem; font-family: var(--system-font); resize: none; max-height: 120px; overflow-y: auto; line-height: 1.4; transition: background-color 0.2s ease, border-color 0.2s ease; }
@@ -83,13 +70,9 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
     
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            Prism.plugins.autoloader.languages_path = 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/';
-
             const firebaseConfig = {
                 apiKey: "AIzaSyDDdaUMgPSmlkRfjaBDm9SrylWyX7wC2oE", authDomain: "ai-chatbot-b38da.firebaseapp.com",
                 projectId: "ai-chatbot-b38da", databaseURL: "https://ai-chatbot-b38da-default-rtdb.firebaseio.com",
@@ -115,73 +98,87 @@
             });
             document.getElementById('logout-btn').addEventListener('click', () => auth.signOut());
 
-            function loadChatHistory() { if (!currentUser) return; const chatsRef = db.ref(`chats/${currentUser.uid}`); chatsRef.orderByChild('timestamp').on('value', snapshot => { chatHistoryList.innerHTML = ''; let chats = []; snapshot.forEach(childSnapshot => { chats.push({ id: childSnapshot.key, ...childSnapshot.val() }); }); chats.reverse().forEach(chat => { const title = chat.messages[0]?.text || 'New Chat'; const historyItem = document.createElement('div'); historyItem.className = 'chat-history-item'; historyItem.textContent = title; historyItem.dataset.chatId = chat.id; historyItem.addEventListener('click', () => loadChat(chat.id)); chatHistoryList.appendChild(historyItem); }); }); }
-            async function loadChat(chatId) { if (!currentUser) return; const chatRef = db.ref(`chats/${currentUser.uid}/${chatId}`); const snapshot = await chatRef.get(); if (!snapshot.exists()) return; const chat = snapshot.val(); localChatHistory = chat.messages || []; currentChatId = chatId; chatMessages.innerHTML = ''; localChatHistory.forEach(msg => { const el = addMessageToUI(msg.role === 'model' ? 'ai' : 'user', msg.text); if (msg.role === 'model') { el.querySelector('p').innerHTML = markdownParse(msg.text); addCopyButtons(el); Prism.highlightAllUnder(el); } }); document.querySelectorAll('.chat-history-item').forEach(item => { item.classList.toggle('active', item.dataset.chatId === chatId); }); closeSidebar(); }
-            function saveChat() { if (!currentUser || localChatHistory.length < 2) return; const userChatsRef = db.ref(`chats/${currentUser.uid}`); const chatData = { messages: localChatHistory, timestamp: firebase.database.ServerValue.TIMESTAMP }; if (currentChatId) { userChatsRef.child(currentChatId).update(chatData); } else { const newChatRef = userChatsRef.push(chatData); currentChatId = newChatRef.key; } }
+            function loadChatHistory() {
+                if (!currentUser) return;
+                const chatsRef = db.ref(`chats/${currentUser.uid}`);
+                chatsRef.orderByChild('timestamp').on('value', snapshot => {
+                    chatHistoryList.innerHTML = ''; let chats = [];
+                    snapshot.forEach(childSnapshot => { chats.push({ id: childSnapshot.key, ...childSnapshot.val() }); });
+                    chats.reverse().forEach(chat => {
+                        const title = chat.messages[0]?.text || 'New Chat';
+                        const historyItem = document.createElement('div');
+                        historyItem.className = 'chat-history-item';
+                        historyItem.textContent = title;
+                        historyItem.dataset.chatId = chat.id;
+                        historyItem.addEventListener('click', () => loadChat(chat.id));
+                        chatHistoryList.appendChild(historyItem);
+                    });
+                });
+            }
+            
+            async function loadChat(chatId) {
+                if (!currentUser) return;
+                const chatRef = db.ref(`chats/${currentUser.uid}/${chatId}`);
+                const snapshot = await chatRef.get();
+                if (!snapshot.exists()) return;
+                const chat = snapshot.val();
+                localChatHistory = chat.messages || []; currentChatId = chatId;
+                chatMessages.innerHTML = '';
+                localChatHistory.forEach(msg => {
+                    const el = addMessageToUI(msg.role === 'model' ? 'ai' : 'user', msg.text);
+                    if (msg.role === 'model') { el.querySelector('p').innerHTML = simpleMarkdownParse(msg.text); }
+                });
+                document.querySelectorAll('.chat-history-item').forEach(item => { item.classList.toggle('active', item.dataset.chatId === chatId); });
+                closeSidebar();
+            }
+
+            function saveChat() {
+                if (!currentUser || localChatHistory.length < 2) return;
+                const userChatsRef = db.ref(`chats/${currentUser.uid}`);
+                const chatData = { messages: localChatHistory, timestamp: firebase.database.ServerValue.TIMESTAMP };
+                if (currentChatId) { userChatsRef.child(currentChatId).update(chatData); } 
+                else { const newChatRef = userChatsRef.push(chatData); currentChatId = newChatRef.key; }
+            }
+
             document.getElementById('new-chat-btn').addEventListener('click', startNewChat);
-            function startNewChat() { currentChatId = null; localChatHistory = []; chatMessages.innerHTML = ''; chatInput.value = ''; chatInput.style.height = 'auto'; chatInput.focus(); document.querySelectorAll('.chat-history-item').forEach(item => item.classList.remove('active')); closeSidebar(); }
+
+            function startNewChat() {
+                currentChatId = null; localChatHistory = []; chatMessages.innerHTML = ''; chatInput.value = ''; chatInput.style.height = 'auto'; chatInput.focus();
+                document.querySelectorAll('.chat-history-item').forEach(item => item.classList.remove('active'));
+                closeSidebar();
+            }
+
             function addMessageToUI(sender, text = '') { const m = document.createElement('div'); m.className = `message-container ${sender}`; const p = document.createElement('p'); p.textContent = text; m.appendChild(p); chatMessages.appendChild(m); chatMessages.scrollTop = chatMessages.scrollHeight; return m; }
             
-            function escapeHtml(unsafe) { return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); }
-            function markdownParse(text) {
-                // Process code blocks first
-                let html = text.replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => {
-                    const language = lang.trim().toLowerCase() || 'none';
-                    const escapedCode = escapeHtml(code);
-                    return `<pre class="language-${language}"><code class="language-${language}">${escapedCode}</code></pre>`;
-                });
-            
-                // Process remaining text line by line
-                return html.split('\n').map(line => {
-                    if (line.startsWith('<pre')) return line; // Don't process lines that are already code blocks
-            
-                    return line
-                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
-                        .replace(/\*(.*?)\*/g, '<em>$1</em>')       // Italics
-                        .replace(/`(.*?)`/g, `<code>${escapeHtml('$1')}</code>`) // Inline code
-                        .replace(/^(#+) (.*?)$/gm, (match, hashes, content) => `<h${hashes.length}>${content}</h${hashes.length}>`);
-                }).join('<br>').replace(/<br>\s*<pre/g, '<pre').replace(/<\/pre><br>/g, '</pre>'); // Join lines and clean up spacing around pre blocks
+            function simpleMarkdownParse(text) {
+                return text
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\*(.*?)\*/g, '<strong>$1</strong>') // Treat single asterisks as bold too
+                    .replace(/## (.*?)\n/g, '<h2>$1</h2>')
+                    .replace(/^(#) (.*?)$/gm, '<h2>$2</h2>')
+                    .replace(/\n/g, '<br>');
             }
-
-            function addCopyButtons(container) {
-                const codeBlocks = container.querySelectorAll('pre');
-                codeBlocks.forEach(block => {
-                    const btn = document.createElement('button');
-                    btn.className = 'copy-code-btn';
-                    btn.textContent = 'Copy';
-                    btn.addEventListener('click', () => {
-                        const code = block.querySelector('code').textContent;
-                        navigator.clipboard.writeText(code).then(() => {
-                            btn.textContent = 'Copied!';
-                            setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
-                        });
-                    });
-                    block.appendChild(btn);
-                });
-            }
-
-            // The Corrected "Magical" Streaming Function
+            
+            // --- THE NEW, MAGICAL STREAMING FUNCTION ---
             function streamText(element, text, onComplete) {
-                const words = text.split(/(\s+)/);
                 let currentText = '';
+                const words = text.split(' ');
                 let i = 0;
-                element.innerHTML = '';
+                element.innerHTML = ''; // Start empty
                 
-                function renderNext() {
+                const interval = setInterval(() => {
                     if (i < words.length) {
-                        currentText += words[i];
-                        element.textContent = currentText; // Stream raw, unformatted text
+                        // Add the next word to our raw text string
+                        currentText += (i > 0 ? ' ' : '') + words[i];
+                        // Immediately parse the entire current text and update the HTML
+                        element.innerHTML = simpleMarkdownParse(currentText);
                         chatMessages.scrollTop = chatMessages.scrollHeight;
                         i++;
-                        requestAnimationFrame(renderNext); // Use animation frame for smoother rendering
                     } else {
-                        // --- FINAL FORMATTING PASS ---
-                        // This happens only ONCE at the very end.
-                        element.innerHTML = markdownParse(text);
+                        clearInterval(interval);
                         if (onComplete) onComplete();
                     }
-                }
-                renderNext();
+                }, 40); // Adjust speed here
             }
 
             async function handleSendMessage(e) {
@@ -198,17 +195,14 @@
                     let fullResponseString = '';
                     while (true) { const { value, done } = await reader.read(); if (done) break; fullResponseString += decoder.decode(value, { stream: true }); }
 
-                    // We now know the response is a flawed JSON array string, so we fix it.
-                    const jsonContent = fullResponseString.startsWith('[{') ? fullResponseString.slice(1, -1) : fullResponseString;
+                    const jsonContent = fullResponseString.slice(1, -1);
                     const responseArray = JSON.parse(`[${jsonContent}]`);
                     let aiResponseText = '';
                     for (const item of responseArray) { const text = item?.candidates?.[0]?.content?.parts?.[0]?.text; if (text) aiResponseText += text; }
                     
-                    // Use the corrected streaming function
+                    // Use the new, smarter streaming function
                     streamText(aiMsgP, aiResponseText, () => {
-                        // Add buttons and highlight syntax AFTER streaming is complete.
-                        addCopyButtons(aiMsgP);
-                        Prism.highlightAllUnder(aiMsgP);
+                        // This runs after streaming is complete. We just save the chat.
                         localChatHistory.push({ role: 'model', text: aiResponseText });
                         saveChat();
                     });
@@ -220,7 +214,6 @@
             chatInput.addEventListener('input', () => { chatInput.style.height = 'auto'; chatInput.style.height = `${chatInput.scrollHeight}px`; });
             chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); chatForm.requestSubmit(); } });
             
-            // Sidebar logic
             const sidebar = document.getElementById('sidebar'); const menuToggle = document.getElementById('menu-toggle'); const sidebarOverlay = document.getElementById('sidebar-overlay'); let isDragging = false, startX = 0, currentTranslate = 0; const sidebarWidth = () => sidebar.offsetWidth; const openSidebar = () => { sidebar.style.transform = 'translateX(0)'; document.body.classList.add('sidebar-open'); }; const closeSidebar = () => { sidebar.style.transform = `translateX(-${sidebarWidth()}px)`; document.body.classList.remove('sidebar-open'); }; menuToggle.addEventListener('click', (e) => { e.stopPropagation(); const isOpen = document.body.classList.contains('sidebar-open'); isOpen ? closeSidebar() : openSidebar(); }); sidebarOverlay.addEventListener('click', closeSidebar); const dragStart = (e) => { const t = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX, s = document.body.classList.contains('sidebar-open'); if (s || t < 40) { isDragging = true; startX = t; sidebar.classList.add('no-transition'); currentTranslate = s ? 0 : -sidebarWidth(); }}; const dragMove = (e) => { if (!isDragging) return; const t = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX, n = t - startX; let s = Math.min(0, Math.max(-sidebarWidth(), currentTranslate + n)); sidebar.style.transform = `translateX(${s}px)`; sidebarOverlay.style.opacity = 1 - (Math.abs(s) / sidebarWidth()); }; const dragEnd = (e) => { if (!isDragging) return; isDragging = false; sidebar.classList.remove('no-transition'); sidebarOverlay.style.opacity = ''; const t = new DOMMatrix(getComputedStyle(sidebar).transform).m41; t > -sidebarWidth() / 2 ? openSidebar() : closeSidebar(); }; document.body.addEventListener('mousedown', dragStart); document.body.addEventListener('mousemove', dragMove); document.body.addEventListener('mouseup', dragEnd); document.body.addEventListener('mouseleave', dragEnd); document.body.addEventListener('touchstart', dragStart, { passive: true }); document.body.addEventListener('touchmove', dragMove, { passive: true }); document.body.addEventListener('touchend', dragEnd);
         });
     </script>
