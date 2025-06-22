@@ -13,6 +13,7 @@
             --sidebar-bg: #f5f5f7;
             --border-color: #e5e5e5;
             --user-msg-bg: #e9e9eb;
+            /* AI Message background is now transparent */
             --ai-msg-bg: transparent; 
             --system-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             --sidebar-width: 280px;
@@ -43,9 +44,19 @@
         @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
         .message-container p { margin: 0; }
         .message-container.user { background-color: var(--user-msg-bg); align-self: flex-end; border-bottom-right-radius: 4px; }
-        .message-container.ai { background-color: var(--ai-msg-bg); align-self: flex-start; border: none; padding-left: 0; padding-right: 0; }
-        .message-container.ai strong, .message-container.ai b { font-weight: 600; }
-        .message-container.ai h1, .message-container.ai h2, .message-container.ai h3 { margin-top: 1rem; margin-bottom: 0.5rem; }
+        
+        /* NEW: AI message has no background or border, and less padding */
+        .message-container.ai {
+            background-color: var(--ai-msg-bg);
+            align-self: flex-start;
+            border: none; /* No more frame */
+            padding-left: 0; /* Align with left edge */
+            padding-right: 0;
+        }
+        /* NEW: Bolder text for headers/strong tags from Markdown */
+        .message-container.ai strong { font-weight: 600; }
+        .message-container.ai h2 { font-size: 1.2rem; margin-top: 1rem; margin-bottom: 0.5rem; }
+
         .welcome-message { align-self: center; text-align: center; margin-top: 2rem; border: none !important; padding: 0 !important; }
         #login-btn { margin-top: 1rem; padding: 0.75rem 1.5rem; background-color: var(--primary-accent); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; }
         #chat-input-container { padding: 0.75rem 1rem; border-top: 1px solid var(--border-color); background-color: var(--background-color); }
@@ -74,14 +85,22 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const firebaseConfig = {
-                apiKey: "AIzaSyDDdaUMgPSmlkRfjaBDm9SrylWyX7wC2oE", authDomain: "ai-chatbot-b38da.firebaseapp.com",
-                projectId: "ai-chatbot-b38da", databaseURL: "https://ai-chatbot-b38da-default-rtdb.firebaseio.com",
-                storageBucket: "ai-chatbot-b38da.firebasestorage.app", messagingSenderId: "502343320611",
+                apiKey: "AIzaSyDDdaUMgPSmlkRfjaBDm9SrylWyX7wC2oE",
+                authDomain: "ai-chatbot-b38da.firebaseapp.com",
+                projectId: "ai-chatbot-b38da",
+                databaseURL: "https://ai-chatbot-b38da-default-rtdb.firebaseio.com",
+                storageBucket: "ai-chatbot-b38da.firebasestorage.app",
+                messagingSenderId: "502343320611",
                 appId: "1:502343320611:web:247b096133faf46688dd96"
             };
             firebase.initializeApp(firebaseConfig);
-            const auth = firebase.auth(); const db = firebase.database();
-            let currentUser = null; let currentChatId = null; let localChatHistory = [];
+            const auth = firebase.auth();
+            const db = firebase.database();
+            
+            let currentUser = null;
+            let currentChatId = null;
+            let localChatHistory = [];
+
             const chatHistoryList = document.getElementById('chat-history-list');
             const chatForm = document.getElementById('chat-form'); const chatInput = document.getElementById('chat-input'); const chatMessages = document.getElementById('chat-messages');
 
@@ -122,11 +141,15 @@
                 const snapshot = await chatRef.get();
                 if (!snapshot.exists()) return;
                 const chat = snapshot.val();
-                localChatHistory = chat.messages || []; currentChatId = chatId;
+                localChatHistory = chat.messages || [];
+                currentChatId = chatId;
                 chatMessages.innerHTML = '';
+                // NEW: When loading an old chat, parse markdown immediately.
                 localChatHistory.forEach(msg => {
                     const el = addMessageToUI(msg.role === 'model' ? 'ai' : 'user', msg.text);
-                    if (msg.role === 'model') { el.querySelector('p').innerHTML = simpleMarkdownParse(msg.text); }
+                    if (msg.role === 'model') {
+                        el.querySelector('p').innerHTML = simpleMarkdownParse(msg.text);
+                    }
                 });
                 document.querySelectorAll('.chat-history-item').forEach(item => { item.classList.toggle('active', item.dataset.chatId === chatId); });
                 closeSidebar();
@@ -150,35 +173,29 @@
 
             function addMessageToUI(sender, text = '') { const m = document.createElement('div'); m.className = `message-container ${sender}`; const p = document.createElement('p'); p.textContent = text; m.appendChild(p); chatMessages.appendChild(m); chatMessages.scrollTop = chatMessages.scrollHeight; return m; }
             
+            // --- NEW: Markdown Parser ---
             function simpleMarkdownParse(text) {
                 return text
-                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                    .replace(/\*(.*?)\*/g, '<strong>$1</strong>') // Treat single asterisks as bold too
-                    .replace(/## (.*?)\n/g, '<h2>$1</h2>')
-                    .replace(/^(#) (.*?)$/gm, '<h2>$2</h2>')
-                    .replace(/\n/g, '<br>');
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
+                    .replace(/## (.*?)\n/g, '<h2>$1</h2>')     // H2 headers
+                    .replace(/\n/g, '<br>'); // Line breaks
             }
             
-            // --- THE NEW, MAGICAL STREAMING FUNCTION ---
+            // --- NEW: Simulated Text Streaming Function ---
             function streamText(element, text, onComplete) {
-                let currentText = '';
                 const words = text.split(' ');
                 let i = 0;
-                element.innerHTML = ''; // Start empty
-                
+                element.innerHTML = ''; // Start with an empty element
                 const interval = setInterval(() => {
                     if (i < words.length) {
-                        // Add the next word to our raw text string
-                        currentText += (i > 0 ? ' ' : '') + words[i];
-                        // Immediately parse the entire current text and update the HTML
-                        element.innerHTML = simpleMarkdownParse(currentText);
+                        element.innerHTML += (i > 0 ? ' ' : '') + words[i];
                         chatMessages.scrollTop = chatMessages.scrollHeight;
                         i++;
                     } else {
                         clearInterval(interval);
                         if (onComplete) onComplete();
                     }
-                }, 40); // Adjust speed here
+                }, 40); // Adjust speed here (milliseconds)
             }
 
             async function handleSendMessage(e) {
@@ -200,9 +217,10 @@
                     let aiResponseText = '';
                     for (const item of responseArray) { const text = item?.candidates?.[0]?.content?.parts?.[0]?.text; if (text) aiResponseText += text; }
                     
-                    // Use the new, smarter streaming function
+                    // NEW: Use the simulated streaming function
                     streamText(aiMsgP, aiResponseText, () => {
-                        // This runs after streaming is complete. We just save the chat.
+                        // This runs after the streaming is complete
+                        aiMsgP.innerHTML = simpleMarkdownParse(aiResponseText); // Apply final formatting
                         localChatHistory.push({ role: 'model', text: aiResponseText });
                         saveChat();
                     });
@@ -214,6 +232,7 @@
             chatInput.addEventListener('input', () => { chatInput.style.height = 'auto'; chatInput.style.height = `${chatInput.scrollHeight}px`; });
             chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); chatForm.requestSubmit(); } });
             
+            // Sidebar logic
             const sidebar = document.getElementById('sidebar'); const menuToggle = document.getElementById('menu-toggle'); const sidebarOverlay = document.getElementById('sidebar-overlay'); let isDragging = false, startX = 0, currentTranslate = 0; const sidebarWidth = () => sidebar.offsetWidth; const openSidebar = () => { sidebar.style.transform = 'translateX(0)'; document.body.classList.add('sidebar-open'); }; const closeSidebar = () => { sidebar.style.transform = `translateX(-${sidebarWidth()}px)`; document.body.classList.remove('sidebar-open'); }; menuToggle.addEventListener('click', (e) => { e.stopPropagation(); const isOpen = document.body.classList.contains('sidebar-open'); isOpen ? closeSidebar() : openSidebar(); }); sidebarOverlay.addEventListener('click', closeSidebar); const dragStart = (e) => { const t = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX, s = document.body.classList.contains('sidebar-open'); if (s || t < 40) { isDragging = true; startX = t; sidebar.classList.add('no-transition'); currentTranslate = s ? 0 : -sidebarWidth(); }}; const dragMove = (e) => { if (!isDragging) return; const t = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX, n = t - startX; let s = Math.min(0, Math.max(-sidebarWidth(), currentTranslate + n)); sidebar.style.transform = `translateX(${s}px)`; sidebarOverlay.style.opacity = 1 - (Math.abs(s) / sidebarWidth()); }; const dragEnd = (e) => { if (!isDragging) return; isDragging = false; sidebar.classList.remove('no-transition'); sidebarOverlay.style.opacity = ''; const t = new DOMMatrix(getComputedStyle(sidebar).transform).m41; t > -sidebarWidth() / 2 ? openSidebar() : closeSidebar(); }; document.body.addEventListener('mousedown', dragStart); document.body.addEventListener('mousemove', dragMove); document.body.addEventListener('mouseup', dragEnd); document.body.addEventListener('mouseleave', dragEnd); document.body.addEventListener('touchstart', dragStart, { passive: true }); document.body.addEventListener('touchmove', dragMove, { passive: true }); document.body.addEventListener('touchend', dragEnd);
         });
     </script>
