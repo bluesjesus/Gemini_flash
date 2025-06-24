@@ -219,7 +219,7 @@
                             textNode.nodeValue += (i > 0 ? ' ' : '') + words[i];
                             chatMessages.scrollTop = chatMessages.scrollHeight;
                             i++;
-                            setTimeout(addWord, 0.5); // Text speed
+                            setTimeout(addWord, 25); // Text speed
                         } else {
                             resolve();
                         }
