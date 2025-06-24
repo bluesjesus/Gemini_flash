@@ -83,12 +83,16 @@
         @keyframes bob { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1.0); } }
         /* --- New/Improved Styles for Code Blocks --- */
         .code-block-wrapper { position: relative; margin: 1rem 0; }
-        .message-container.ai pre { background-color: var(--code-bg); color: var(--code-text-color); padding: 1rem; border-radius: 8px; overflow-x: auto; font-family: 'SF Mono', 'Fira Code', 'monospace'; font-size: 0.9rem; line-height: 1.6; margin: 0; }
-        .message-container.ai pre code.hljs { padding: 0; background: transparent; }
-        .copy-btn { position: absolute; top: 8px; right: 8px; background: #3a3f4b; color: #e0e0e0; border: none; padding: 0.3rem 0.6rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem; opacity: 0; transition: opacity 0.2s ease; }
+        .message-container.ai pre { background-color: var(--code-bg); color: #abb2bf; padding: 1rem; border-radius: 8px; overflow-x: auto; font-family: 'SF Mono', 'Fira Code', 'monospace'; font-size: 0.9rem; line-height: 1.6; margin: 0; }
+        .copy-btn { position: absolute; top: 8px; right: 8px; background: #3a3f4b; color: #e0e0e0; border: none; padding: 0.3rem 0.6rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem; opacity: 0; transition: opacity 0.2s ease; font-family: -apple-system, sans-serif; }
         .code-block-wrapper:hover .copy-btn { opacity: 1; }
-        .copy-btn:hover { background: #4a4f5b; }
-        .copy-btn:active { transform: scale(0.95); }
+
+        #chat-context-menu { position: absolute; z-index: 1001; background: #fff; border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 0.5rem 0; min-width: 150px; display: none; }
+        .context-menu-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 1rem; cursor: pointer; font-size: 0.9rem; }
+        .context-menu-item:hover { background-color: #f0f0f0; }
+        .context-menu-item.delete { color: #d93025; }
+        .context-menu-item svg { width: 16px; height: 16px; fill: currentColor; }
+        .rename-input { width: 80%; box-sizing: border-box; font-family: var(--system-font); font-size: 0.95rem; border: 1px solid var(--primary-accent); outline: none; padding: 2px 4px; }
     </style>
 </head>
 <body>
