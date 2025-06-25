@@ -245,7 +245,8 @@
                     parent.replaceChild(fragment, node);
                     
                     // Wait for the animation of this segment to mostly finish before starting the next
-                    await new Promise(resolve => setTimeout(resolve, delay * 1000));
+                    
+                    await document. fonts.ready;
                 }
             }
 
