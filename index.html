@@ -345,7 +345,7 @@
                 document.body.classList.contains('sidebar-open') ? closeSidebar() : openSidebar();
             });
             appContainer.addEventListener('click', (e) => {
-                const hotspotWidth = 60;
+                const hotspotWidth = 70;
                 if (e.clientX <= hotspotWidth && !document.body.classList.contains('sidebar-open')) {
                     menuToggle.classList.add('visible');
                     clearTimeout(menuToggleTimeout);
@@ -356,7 +356,7 @@
             });
             sidebarOverlay.addEventListener('click', closeSidebar); 
             let isDragging = false, startX = 0, currentTranslate = 0;
-            const dragStart = (e) => { const t = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX, s = document.body.classList.contains('sidebar-open'); if (s || t < 40) { isDragging = true; startX = t; sidebar.classList.add('no-transition'); currentTranslate = s ? 0 : -sidebar.offsetWidth; }}; const dragMove = (e) => { if (!isDragging) return; const t = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX, n = t - startX; let s = Math.min(0, Math.max(-sidebar.offsetWidth, currentTranslate + n)); sidebar.style.transform = `translateX(${s}px)`; sidebarOverlay.style.opacity = 1 - (Math.abs(s) / sidebar.offsetWidth); }; const dragEnd = (e) => { if (!isDragging) return; isDragging = false; sidebar.classList.remove('no-transition'); sidebarOverlay.style.opacity = ''; const t = new DOMMatrix(getComputedStyle(sidebar).transform).m41; t > -sidebar.offsetWidth / 2 ? openSidebar() : closeSidebar(); }; document.body.addEventListener('mousedown', dragStart); document.body.addEventListener('mousemove', dragMove); document.body.addEventListener('mouseup', dragEnd); document.body.addEventListener('mouseleave', dragEnd); document.body.addEventListener('touchstart', dragStart, { passive: true }); document.body.addEventListener('touchmove', dragMove, { passive: true }); document.body.addEventListener('touchend', dragEnd);
+            const dragStart = (e) => { const t = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX, s = document.body.classList.contains('sidebar-open'); if (s || t < 70) { isDragging = true; startX = t; sidebar.classList.add('no-transition'); currentTranslate = s ? 0 : -sidebar.offsetWidth; }}; const dragMove = (e) => { if (!isDragging) return; const t = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX, n = t - startX; let s = Math.min(0, Math.max(-sidebar.offsetWidth, currentTranslate + n)); sidebar.style.transform = `translateX(${s}px)`; sidebarOverlay.style.opacity = 1 - (Math.abs(s) / sidebar.offsetWidth); }; const dragEnd = (e) => { if (!isDragging) return; isDragging = false; sidebar.classList.remove('no-transition'); sidebarOverlay.style.opacity = ''; const t = new DOMMatrix(getComputedStyle(sidebar).transform).m41; t > -sidebar.offsetWidth / 2 ? openSidebar() : closeSidebar(); }; document.body.addEventListener('mousedown', dragStart); document.body.addEventListener('mousemove', dragMove); document.body.addEventListener('mouseup', dragEnd); document.body.addEventListener('mouseleave', dragEnd); document.body.addEventListener('touchstart', dragStart, { passive: true }); document.body.addEventListener('touchmove', dragMove, { passive: true }); document.body.addEventListener('touchend', dragEnd);
         });
     </script>
 </body>
