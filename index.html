@@ -384,7 +384,7 @@
             isHorizontalDrag = true;
         }
     }
-
+    e.preventDefault();
     let s = Math.min(0, Math.max(-sidebar.offsetWidth, currentTranslate + deltaX));
     sidebar.style.transform = `translateX(${s}px)`;
     sidebarOverlay.style.opacity = 1 - (Math.abs(s) / sidebar.offsetWidth);
