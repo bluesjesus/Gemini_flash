@@ -31,9 +31,27 @@
             --code-text-color: #abb2bf;
         }
         html { scroll-behavior: smooth; }
+                /* ... other CSS rules above ... */
+
         body, html { margin: 0; padding: 0; font-family: var(--system-font); height: 100%; width: 100%; overflow: hidden; background-color: var(--background-color); color: var(--text-color); }
-        body.is-dragging { overflow: hidden; }
+        body.is-dragging { overflow: hidden; } /* Prevents scrolling during sidebar drag */
+        
+        /* --- PASTE THE NEW CODE BLOCK HERE --- */
+        html {
+            /* For Firefox */
+            scrollbar-width: none;
+            /* For Internet Explorer and Edge */
+            -ms-overflow-style: none;
+        }
+        html::-webkit-scrollbar {
+            /* For Chrome, Safari, and Opera */
+            display: none;
+        }
+        /* --- END OF NEW CODE BLOCK --- */
+
         #app-container { display: flex; height: 100dvh; width: 100vw; position: relative; }
+        
+        /* ... other CSS rules below ... */
         #sidebar { width: var(--sidebar-width); max-width: 85vw; height: 100%; background-color: var(--sidebar-bg); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; position: fixed; left: 0; top: 0; transform: translateX(calc(-1 * var(--sidebar-width))); transition: transform 0.4s cubic-bezier(0.25, 0.1, 0.25, 1.0); z-index: 1000; will-change: transform; }
         #sidebar.no-transition { transition: none; }
         .sidebar-header { padding: 1rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
