@@ -43,11 +43,12 @@
         
         .chat-history-item { position: relative; display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; cursor: pointer; border-bottom: 1px solid var(--border-color); }
         .chat-title { flex-grow: 1; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; padding-right: 1rem; }
-        .chat-actions-btn { background: none; border: none; font-size: 1.25rem; font-weight: 600; cursor: pointer; color: #555; padding: 0.25rem 0.5rem; line-height: 1; border-radius: 4px; opacity: 0; transition: opacity 0.2s ease; }
-        .chat-history-item:hover .chat-actions-btn { opacity: 1; }
-        .chat-actions-btn:hover { background-color: #dcdce0; }
+        .rename-input { font: inherit; border: 1px solid var(--primary-accent); border-radius: 4px; padding: 0.2rem 0.4rem; width: 100%; box-sizing: border-box;}
         
-        /* --- NEW: Styles for the actions dropdown menu --- */
+        /* --- NEW: Styles for the triple-dot menu --- */
+        .chat-actions-btn { background: none; border: none; font-size: 1.25rem; font-weight: 600; cursor: pointer; color: #555; padding: 0.25rem 0.5rem; line-height: 1; border-radius: 4px; opacity: 0; transition: opacity 0.2s ease; }
+        .chat-history-item:hover .chat-actions-btn, .chat-history-item.active .chat-actions-btn { opacity: 1; }
+        .chat-actions-btn:hover { background-color: #dcdce0; }
         .actions-dropdown {
             position: absolute;
             top: 2.5rem;
@@ -60,21 +61,9 @@
             display: none; /* Hidden by default */
             border: 1px solid var(--border-color);
         }
-        .actions-dropdown button {
-            display: block;
-            width: 100%;
-            padding: 0.75rem 1rem;
-            background: none;
-            border: none;
-            text-align: left;
-            cursor: pointer;
-            font-size: 0.9rem;
-            min-width: 120px;
-        }
+        .actions-dropdown button { display: block; width: 100%; padding: 0.75rem 1rem; background: none; border: none; text-align: left; cursor: pointer; font-size: 0.9rem; min-width: 120px; }
         .actions-dropdown button:hover { background-color: var(--sidebar-bg); }
         .actions-dropdown .delete-action { color: #d92d20; }
-        
-        .rename-input { font: inherit; border: 1px solid var(--primary-accent); border-radius: 4px; padding: 0.2rem 0.4rem; width: 100%; box-sizing: border-box;}
         
         .chat-history-item.active { background-color: #dcdce0; font-weight: 500; }
         .sidebar-footer { padding: 1rem; border-top: 1px solid var(--border-color); }
@@ -168,8 +157,6 @@
             const chatForm = document.getElementById('chat-form'); const chatInput = document.getElementById('chat-input'); const chatMessages = document.getElementById('chat-messages');
             
             const userAvatar = document.getElementById('user-avatar');
-
-            // --- NEW: Global reference to the currently open dropdown menu ---
             let activeDropdown = null;
 
             auth.onAuthStateChanged(user => {
@@ -198,22 +185,18 @@
                 }
             }
             
-            // --- NEW: Function to close any open rename inputs ---
             function cancelAllRenames() {
                 document.querySelectorAll('.rename-input').forEach(input => {
                     const originalTitleSpan = document.createElement('span');
                     originalTitleSpan.className = 'chat-title';
                     originalTitleSpan.textContent = input.dataset.originalTitle;
-                    input.parentNode.replaceChild(originalTitleSpan, input);
+                    input.parentElement.replaceChild(originalTitleSpan, input);
                 });
             }
 
             function handleRenameChat(chatId, titleSpan) {
                 if (!currentUser || !chatId) return;
-                
-                // --- NEW: Close any other edits before starting a new one ---
                 cancelAllRenames();
-
                 const input = document.createElement('input');
                 input.type = 'text';
                 input.className = 'rename-input';
@@ -226,15 +209,11 @@
                         db.ref(`chats/${currentUser.uid}/${chatId}`).update({ title: newTitle })
                           .catch(error => console.error("Error renaming chat:", error));
                     }
-                    // The UI updates from the listener, no need to manually revert.
                 };
-
                 input.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') input.blur();
-                    if (e.key === 'Escape') input.blur(); // Also save on escape
+                    if (e.key === 'Enter' || e.key === 'Escape') input.blur();
                 });
                 input.addEventListener('blur', saveRename);
-
                 titleSpan.parentNode.replaceChild(input, titleSpan);
                 input.select();
             }
@@ -244,7 +223,7 @@
                 const chatsRef = db.ref(`chats/${currentUser.uid}`);
                 chatsRef.orderByChild('timestamp').on('value', snapshot => {
                     chatHistoryList.innerHTML = ''; 
-                    cancelAllRenames(); // Close edits on history refresh
+                    cancelAllRenames(); 
                     let chats = [];
                     snapshot.forEach(childSnapshot => { chats.push({ id: childSnapshot.key, ...childSnapshot.val() }); });
                     chats.reverse().forEach(chat => {
@@ -257,9 +236,8 @@
                         const titleSpan = document.createElement('span');
                         titleSpan.className = 'chat-title';
                         titleSpan.textContent = titleText;
-                        titleSpan.addEventListener('click', () => loadChat(chat.id));
+                        titleSpan.addEventListener('click', () => { if(!document.querySelector('.rename-input')) loadChat(chat.id); });
                         
-                        // --- NEW: Triple-dot button and dropdown logic ---
                         const actionsBtn = document.createElement('button');
                         actionsBtn.className = 'chat-actions-btn';
                         actionsBtn.innerHTML = '…';
@@ -273,11 +251,9 @@
 
                         actionsBtn.addEventListener('click', (e) => {
                             e.stopPropagation();
-                            // Close any other open dropdown
                             if (activeDropdown && activeDropdown !== dropdown) {
                                 activeDropdown.style.display = 'none';
                             }
-                            // Toggle current dropdown
                             dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
                             activeDropdown = dropdown.style.display === 'block' ? dropdown : null;
                         });
@@ -308,35 +284,178 @@
                 });
             }
             async function loadChat(chatId) {
-                // ... (This function remains unchanged)
+                if (!currentUser) return;
+                cancelAllRenames();
+                const chatRef = db.ref(`chats/${currentUser.uid}/${chatId}`);
+                const snapshot = await chatRef.get();
+                if (!snapshot.exists()) return;
+                const chat = snapshot.val();
+                localChatHistory = chat.messages || []; currentChatId = chatId;
+                chatMessages.innerHTML = '';
+                chatMessages.classList.add('is-loading-history');
+                localChatHistory.forEach(msg => {
+                    const el = addMessageToUI(msg.role === 'model' ? 'ai' : 'user');
+                    if(msg.role === 'user') {
+                        el.querySelector('p').textContent = msg.text;
+                    } else { 
+                        el.innerHTML = msg.text;
+                        el.querySelectorAll('pre').forEach(pre => {
+                            const wrapper = document.createElement('div');
+                            wrapper.className = 'code-block-wrapper';
+                            pre.parentNode.insertBefore(wrapper, pre);
+                            wrapper.appendChild(pre);
+                            const codeText = pre.querySelector('code').innerText;
+                            const btn = document.createElement('button');
+                            btn.className = 'copy-btn';
+                            btn.textContent = 'Copy Code';
+                            btn.onclick = () => navigator.clipboard.writeText(codeText).then(() => { btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = 'Copy Code'; }, 2000); });
+                            wrapper.appendChild(btn);
+                            hljs.highlightElement(pre.querySelector('code'));
+                        });
+                    }
+                });
+                requestAnimationFrame(() => {
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                    chatMessages.classList.remove('is-loading-history');
+                });
+                document.querySelectorAll('.chat-history-item').forEach(item => { item.classList.toggle('active', item.dataset.chatId === chatId); });
+                closeSidebar();
             }
             function saveChat() {
-                // ... (This function remains unchanged)
+                if (!currentUser || localChatHistory.length < 2) return;
+                const userChatsRef = db.ref(`chats/${currentUser.uid}`);
+                const chatData = { 
+                    messages: localChatHistory, 
+                    timestamp: firebase.database.ServerValue.TIMESTAMP 
+                };
+                
+                if (!currentChatId) {
+                    chatData.title = localChatHistory[0].text.substring(0, 40); // Limit title length
+                    const newChatRef = userChatsRef.push(chatData); 
+                    currentChatId = newChatRef.key;
+                } else {
+                    userChatsRef.child(currentChatId).update({
+                        messages: chatData.messages,
+                        timestamp: chatData.timestamp
+                    }); 
+                }
             }
             document.getElementById('new-chat-btn').addEventListener('click', startNewChat);
             function startNewChat() {
-                // ... (This function remains unchanged)
+                currentChatId = null; localChatHistory = []; chatMessages.innerHTML = ''; chatInput.value = ''; chatInput.style.height = 'auto'; chatInput.focus();
+                document.querySelectorAll('.chat-history-item').forEach(item => item.classList.remove('active'));
+                closeSidebar();
             }
             function addMessageToUI(sender, text = '') { 
-                // ... (This function remains unchanged)
+                const m = document.createElement('div'); 
+                m.className = `message-container ${sender}`; 
+                if (sender === 'user') {
+                    const p = document.createElement('p');
+                    p.textContent = text;
+                    m.appendChild(p);
+                }
+                chatMessages.appendChild(m); 
+                chatMessages.scrollTop = chatMessages.scrollHeight; 
+                return m; 
             }
             
-            function smartScroll() { /* ... */ }
-            async function processNode(sourceNode, targetContainer) { /* ... */ }
-            async function streamResponse(container, text, onComplete) { /* ... */ }
-            async function handleSendMessage(e) { /* ... */ }
-            
+            function smartScroll() {
+                const isScrolledToBottom = chatMessages.scrollHeight - chatMessages.clientHeight <= chatMessages.scrollTop + 50;
+                if (isScrolledToBottom) { chatMessages.scrollTop = chatMessages.scrollHeight; }
+            }
+            async function processNode(sourceNode, targetContainer) {
+                const WORD_STREAM_DELAY = 10;
+                for (const child of Array.from(sourceNode.childNodes)) {
+                    if (child.nodeType === Node.TEXT_NODE) {
+                        const words = child.nodeValue.split(/(\s+)/);
+                        for (const word of words) {
+                            if (word.trim().length > 0) {
+                                const span = document.createElement('span');
+                                span.className = 'word-anim';
+                                span.textContent = word;
+                                targetContainer.appendChild(span);
+                                smartScroll();
+                                await new Promise(res => setTimeout(res, WORD_STREAM_DELAY));
+                            } else { targetContainer.appendChild(document.createTextNode(word)); }
+                        }
+                    } else if (child.nodeType === Node.ELEMENT_NODE) {
+                        const newTargetElement = document.createElement(child.tagName);
+                        targetContainer.appendChild(newTargetElement);
+                        await processNode(child, newTargetElement);
+                    }
+                }
+            }
+            async function streamResponse(container, text, onComplete) {
+                const PAUSE_AFTER_BLOCK = 80;
+                marked.setOptions({
+                    highlight: (code, lang) => hljs.getLanguage(lang) ? hljs.highlight(code, { language: lang }).value : hljs.highlightAuto(code).value,
+                    langPrefix: 'hljs language-', gfm: true, breaks: true,
+                });
+                await fontsReadyPromise;
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = marked.parse(text);
+                container.innerHTML = '';
+                for (const sourceNode of Array.from(tempDiv.childNodes)) {
+                    if (sourceNode.tagName?.toLowerCase() === 'pre') {
+                        const wrapper = document.createElement('div');
+                        wrapper.className = 'code-block-wrapper';
+                        const codeText = sourceNode.querySelector('code').innerText;
+                        const btn = document.createElement('button');
+                        btn.className = 'copy-btn';
+                        btn.textContent = 'Copy Code';
+                        btn.onclick = () => navigator.clipboard.writeText(codeText).then(() => { btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = 'Copy Code'; }, 2000); });
+                        wrapper.appendChild(sourceNode.cloneNode(true));
+                        wrapper.appendChild(btn);
+                        container.appendChild(wrapper);
+                        hljs.highlightElement(wrapper.querySelector('code'));
+                        smartScroll();
+                        continue;
+                    }
+                    const newBlock = document.createElement(sourceNode.tagName || 'p');
+                    container.appendChild(newBlock);
+                    await processNode(sourceNode, newBlock);
+                    await new Promise(res => setTimeout(res, PAUSE_AFTER_BLOCK));
+                }
+                if (onComplete) onComplete(container.innerHTML);
+            }
+
+            async function handleSendMessage(e) {
+                e.preventDefault(); if (!currentUser) return; const userMessage = chatInput.value.trim(); if (!userMessage) return;
+                chatInput.value = ''; chatInput.style.height = 'auto';
+                addMessageToUI('user', userMessage); 
+                localChatHistory.push({ role: 'user', text: userMessage });
+                const aiMsgContainer = addMessageToUI('ai', ''); 
+                aiMsgContainer.innerHTML = `<div class="thinking-indicator"><span></span><span></span><span></span></div>`;
+                try {
+                    const response = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: userMessage, history: localChatHistory.slice(0, -1) }) });
+                    if (!response.ok || !response.body) throw new Error('API response error.');
+                    const reader = response.body.getReader(); const decoder = new TextDecoder();
+                    let fullResponseString = '';
+                    while (true) { const { value, done } = await reader.read(); if (done) break; fullResponseString += decoder.decode(value, { stream: true }); }
+                    const jsonContent = fullResponseString.slice(1, -1);
+                    const responseArray = JSON.parse(`[${jsonContent}]`);
+                    let aiResponseText = '';
+                    for (const item of responseArray) { const text = item?.candidates?.[0]?.content?.parts?.[0]?.text; if (text) aiResponseText += text; }
+                    
+                    streamResponse(aiMsgContainer, aiResponseText, (finalHtml) => {
+                        localChatHistory.push({ role: 'model', text: finalHtml });
+                        saveChat();
+                    });   
+                } catch (error) { 
+                    console.error("AI Error:", error); 
+                    aiMsgContainer.innerHTML = "<p>Sorry, an error occurred while getting a response.</p>"; 
+                }
+            }
             chatForm.addEventListener('submit', handleSendMessage);
-            chatInput.addEventListener('input', () => { /* ... */ });
-            chatInput.addEventListener('keydown', (e) => { /* ... */ });
+            chatInput.addEventListener('input', () => { chatInput.style.height = 'auto'; chatInput.style.height = `${chatInput.scrollHeight}px`; });
+            chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); chatForm.requestSubmit(); } });
             
             const sidebar = document.getElementById('sidebar'); 
             const menuToggle = document.getElementById('menu-toggle'); 
             const sidebarOverlay = document.getElementById('sidebar-overlay');
             const appContainer = document.getElementById('app-container');
             let menuToggleTimeout;
-
-            // --- NEW: Global click listener to close dropdowns ---
+            
             document.addEventListener('click', () => {
                 if (activeDropdown) {
                     activeDropdown.style.display = 'none';
@@ -344,16 +463,62 @@
                 }
             });
 
-            const openSidebar = () => { /* ... */ };
-            const closeSidebar = () => { /* ... */ }; 
-            menuToggle.addEventListener('click', (e) => { /* ... */ });
-            appContainer.addEventListener('click', (e) => { /* ... */ });
+            const openSidebar = () => { 
+                sidebar.style.transform = 'translateX(0)'; 
+                document.body.classList.add('sidebar-open');
+                menuToggle.classList.remove('visible');
+                clearTimeout(menuToggleTimeout);
+            };
+            const closeSidebar = () => { 
+                sidebar.style.transform = `translateX(-${sidebar.offsetWidth}px)`;
+                document.body.classList.remove('sidebar-open'); 
+            }; 
+            menuToggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                document.body.classList.contains('sidebar-open') ? closeSidebar() : openSidebar();
+            });
+            appContainer.addEventListener('click', (e) => {
+                const hotspotWidth = 70;
+                if (e.clientX <= hotspotWidth && !document.body.classList.contains('sidebar-open')) {
+                    menuToggle.classList.add('visible');
+                    clearTimeout(menuToggleTimeout);
+                    menuToggleTimeout = setTimeout(() => {
+                        menuToggle.classList.remove('visible');
+                    }, 3000);
+                }
+            });
             sidebarOverlay.addEventListener('click', closeSidebar); 
             
             let isDragging = false, startX = 0, currentTranslate = 0;
-            const dragStart = (e) => { /* ... */ };
-            const dragMove = (e) => { /* ... */ };
-            const dragEnd = (e) => { /* ... */ };
+            const dragStart = (e) => {
+                const t = e.type === 'touchstart' ? e.touches[0] : e;
+                const s = document.body.classList.contains('sidebar-open');
+                if (s && t.target.closest('#chat-history-list')) { return; }
+                if (s || t.clientX < 70) {
+                    isDragging = true;
+                    startX = t.clientX;
+                    sidebar.classList.add('no-transition');
+                    currentTranslate = s ? 0 : -sidebar.offsetWidth;
+                    document.body.classList.add('is-dragging');
+                }
+            };
+            const dragMove = (e) => {
+                if (!isDragging) return;
+                const t = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
+                const n = t - startX;
+                let s = Math.min(0, Math.max(-sidebar.offsetWidth, currentTranslate + n));
+                sidebar.style.transform = `translateX(${s}px)`;
+                sidebarOverlay.style.opacity = 1 - (Math.abs(s) / sidebar.offsetWidth);
+            };
+            const dragEnd = (e) => {
+                if (!isDragging) return;
+                isDragging = false;
+                sidebar.classList.remove('no-transition');
+                sidebarOverlay.style.opacity = '';
+                document.body.classList.remove('is-dragging');
+                const t = new DOMMatrix(getComputedStyle(sidebar).transform).m41;
+                t > -sidebar.offsetWidth / 2 ? openSidebar() : closeSidebar();
+            };
             document.body.addEventListener('mousedown', dragStart);
             document.body.addEventListener('mousemove', dragMove);
             document.body.addEventListener('mouseup', dragEnd);
@@ -365,3 +530,4 @@
     </script>
 </body>
 </html>
+I think there's a small issue with the code. See, when a new chat starts, the title of the chat in the history bar is taken from the first line of my message, so it can be long, but that's what makes the action buttons be displayed a bit off the screen, because of the long title, please make sure you fix this in a beautiful way
