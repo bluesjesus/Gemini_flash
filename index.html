@@ -384,16 +384,27 @@
             
             let isDragging = false, startX = 0, currentTranslate = 0;
             const dragStart = (e) => {
-                const t = e.type === 'touchstart' ? e.touches[0] : e;
-                const s = document.body.classList.contains('sidebar-open');
-                if (s || t.clientX < 70) {
-                    isDragging = true;
-                    startX = t.clientX;
-                    sidebar.classList.add('no-transition');
-                    currentTranslate = s ? 0 : -sidebar.offsetWidth;
-                    document.body.classList.add('is-dragging');
-                }
-            };
+    const t = e.type === 'touchstart' ? e.touches[0] : e;
+    const s = document.body.classList.contains('sidebar-open');
+
+    // --- THIS IS THE CRITICAL FIX ---
+    // If the sidebar is already open and the user touches inside the
+    // scrollable history list, we abort the drag operation completely.
+    // This allows the browser to handle the list's vertical scroll without interference.
+    if (s && t.target.closest('#chat-history-list')) {
+        return; 
+    }
+    // --- END OF FIX ---
+
+    // The rest of the logic only runs if the above condition is false.
+    if (s || t.clientX < 70) {
+        isDragging = true;
+        startX = t.clientX;
+        sidebar.classList.add('no-transition');
+        currentTranslate = s ? 0 : -sidebar.offsetWidth;
+        document.body.classList.add('is-dragging');
+    }
+};
             const dragMove = (e) => {
                 if (!isDragging) return;
                 const t = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
