@@ -58,24 +58,30 @@
         #chat-header h1 { font-size: 1.1rem; margin: 0; }
 
         /* --- FIX: Hide scrollbar on the chat messages div --- */
-        #chat-messages {
-            flex-grow: 1;
-            overflow-y: auto;
-            padding: 1rem;
-            display: flex;
-            flex-direction: column;
-            min-height: 0;
-            width: 100%;
-            max-width: 800px;
-            margin-left: auto;
-            margin-right: auto;
-            box-sizing: border-box;
-            /* Hide scrollbar for different browsers */
-            scrollbar-width: none; /* Firefox */
-            -ms-overflow-style: none;  /* Internet Explorer 10+ */
+            #chat-messages {
+        flex-grow: 1;
+        overflow-y: auto;
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        width: 100%;
+        max-width: 800px;
+        margin-left: auto;
+        margin-right: auto;
+        box-sizing: border-box;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+
+        /* --- ADD THESE THREE LINES TO FIX THE INTERACTION --- */
+        /* Prevents the user from accidentally selecting/highlighting text */
+        user-select: none;
+        -webkit-user-select: none; /* For older Safari */
+        /* Disables the horizontal drag/pan gesture on the text area */
+        touch-action: pan-y;
         }
         #chat-messages::-webkit-scrollbar { 
-            display: none; /* Safari and Chrome */
+        display: none; 
         }
         
         .message-container { max-width: 85%; margin-bottom: 1rem; padding: 0.75rem 1.1rem; border-radius: 18px; line-height: 1.6; word-wrap: break-word; opacity: 0; transform: translateY(15px); animation: fadeInAndRise 0.4s ease forwards; }
