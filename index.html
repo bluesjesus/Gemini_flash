@@ -44,23 +44,10 @@
         .chat-history-item { position: relative; display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; cursor: pointer; border-bottom: 1px solid var(--border-color); }
         .chat-title { flex-grow: 1; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; padding-right: 1rem; }
         .rename-input { font: inherit; border: 1px solid var(--primary-accent); border-radius: 4px; padding: 0.2rem 0.4rem; width: 100%; box-sizing: border-box;}
-        
-        /* --- NEW: Styles for the triple-dot menu --- */
         .chat-actions-btn { background: none; border: none; font-size: 1.25rem; font-weight: 600; cursor: pointer; color: #555; padding: 0.25rem 0.5rem; line-height: 1; border-radius: 4px; opacity: 0; transition: opacity 0.2s ease; }
         .chat-history-item:hover .chat-actions-btn, .chat-history-item.active .chat-actions-btn { opacity: 1; }
         .chat-actions-btn:hover { background-color: #dcdce0; }
-        .actions-dropdown {
-            position: absolute;
-            top: 2.5rem;
-            right: 1rem;
-            background-color: #fff;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            z-index: 10;
-            overflow: hidden;
-            display: none; /* Hidden by default */
-            border: 1px solid var(--border-color);
-        }
+        .actions-dropdown { position: absolute; top: 2.5rem; right: 1rem; background-color: #fff; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 10; overflow: hidden; display: none; border: 1px solid var(--border-color); }
         .actions-dropdown button { display: block; width: 100%; padding: 0.75rem 1rem; background: none; border: none; text-align: left; cursor: pointer; font-size: 0.9rem; min-width: 120px; }
         .actions-dropdown button:hover { background-color: var(--sidebar-bg); }
         .actions-dropdown .delete-action { color: #d92d20; }
@@ -109,11 +96,16 @@
         .copy-btn:active { transform: scale(0.95); }
         @keyframes gradientWave { from { opacity: 0; color: #aaa; transform: translateY(5px); } to { opacity: 1; color: var(--text-color); transform: translateY(0); } }
         .word-anim { opacity: 0; display: inline-block; animation: gradientWave 0.2s ease-out forwards; }
-        .thinking-indicator { display: flex; gap: 5px; padding: 0.75rem 1.1rem; }
-        .thinking-indicator span { width: 8px; height: 8px; background-color: #999; border-radius: 50%; animation: pulse 1.4s infinite ease-in-out both; }
-        .thinking-indicator span:nth-child(1) { animation-delay: -0.32s; }
-        .thinking-indicator span:nth-child(2) { animation-delay: -0.16s; }
-        @keyframes pulse { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1.0); } }
+        
+        /* --- NEW: Sleek "Thinking" Wave Animation --- */
+        .thinking-indicator { display: flex; gap: 4px; align-items: center; padding: 0.75rem 1.1rem; height: 1.5rem; }
+        .thinking-indicator span { width: 7px; height: 7px; background-color: var(--primary-accent); border-radius: 50%; animation: sleekWave 1.2s ease-in-out infinite; }
+        .thinking-indicator span:nth-child(2) { animation-delay: 0.1s; }
+        .thinking-indicator span:nth-child(3) { animation-delay: 0.2s; }
+        @keyframes sleekWave {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
     </style>
 </head>
 <body>
@@ -187,16 +179,19 @@
             
             function cancelAllRenames() {
                 document.querySelectorAll('.rename-input').forEach(input => {
-                    const originalTitleSpan = document.createElement('span');
-                    originalTitleSpan.className = 'chat-title';
-                    originalTitleSpan.textContent = input.dataset.originalTitle;
-                    input.parentElement.replaceChild(originalTitleSpan, input);
+                    const titleSpan = document.createElement('span');
+                    titleSpan.className = 'chat-title';
+                    titleSpan.textContent = input.dataset.originalTitle;
+                    // Re-add the click listener to load the chat
+                    titleSpan.addEventListener('click', () => { if(!document.querySelector('.rename-input')) loadChat(input.closest('.chat-history-item').dataset.chatId); });
+                    input.parentElement.replaceChild(titleSpan, input);
                 });
             }
 
             function handleRenameChat(chatId, titleSpan) {
                 if (!currentUser || !chatId) return;
-                cancelAllRenames();
+                cancelAllRenames(); // Close any other edits
+                
                 const input = document.createElement('input');
                 input.type = 'text';
                 input.className = 'rename-input';
@@ -205,15 +200,25 @@
                 
                 const saveRename = () => {
                     const newTitle = input.value.trim();
-                    if (newTitle && newTitle !== titleSpan.textContent) {
-                        db.ref(`chats/${currentUser.uid}/${chatId}`).update({ title: newTitle })
-                          .catch(error => console.error("Error renaming chat:", error));
+                    if (newTitle && newTitle !== input.dataset.originalTitle) {
+                        db.ref(`chats/${currentUser.uid}/${chatId}`).update({ title: newTitle });
+                    }
+                    // The 'on value' listener will handle replacing the input with the new span
+                    // But if the name is unchanged, we need to revert it manually.
+                    if (!newTitle || newTitle === input.dataset.originalTitle) {
+                        cancelAllRenames();
                     }
                 };
+
                 input.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter' || e.key === 'Escape') input.blur();
+                    if (e.key === 'Enter') input.blur();
+                    else if (e.key === 'Escape') {
+                         input.value = input.dataset.originalTitle; // Revert text on escape
+                         input.blur();
+                    }
                 });
                 input.addEventListener('blur', saveRename);
+
                 titleSpan.parentNode.replaceChild(input, titleSpan);
                 input.select();
             }
@@ -223,7 +228,6 @@
                 const chatsRef = db.ref(`chats/${currentUser.uid}`);
                 chatsRef.orderByChild('timestamp').on('value', snapshot => {
                     chatHistoryList.innerHTML = ''; 
-                    cancelAllRenames(); 
                     let chats = [];
                     snapshot.forEach(childSnapshot => { chats.push({ id: childSnapshot.key, ...childSnapshot.val() }); });
                     chats.reverse().forEach(chat => {
@@ -231,12 +235,17 @@
                         historyItem.className = 'chat-history-item';
                         historyItem.dataset.chatId = chat.id;
 
-                        const titleText = chat.title || chat.messages[0]?.text || 'New Chat';
+                        const titleText = chat.title || chat.messages[0]?.text.substring(0, 40) || 'New Chat';
                         
                         const titleSpan = document.createElement('span');
                         titleSpan.className = 'chat-title';
                         titleSpan.textContent = titleText;
-                        titleSpan.addEventListener('click', () => { if(!document.querySelector('.rename-input')) loadChat(chat.id); });
+                        titleSpan.addEventListener('click', () => {
+                            // Only load chat if not currently renaming something
+                            if(!document.querySelector('.rename-input')) {
+                                loadChat(chat.id);
+                            }
+                        });
                         
                         const actionsBtn = document.createElement('button');
                         actionsBtn.className = 'chat-actions-btn';
@@ -285,7 +294,7 @@
             }
             async function loadChat(chatId) {
                 if (!currentUser) return;
-                cancelAllRenames();
+                cancelAllRenames(); // Close any edit when loading a new chat
                 const chatRef = db.ref(`chats/${currentUser.uid}/${chatId}`);
                 const snapshot = await chatRef.get();
                 if (!snapshot.exists()) return;
@@ -330,7 +339,7 @@
                 };
                 
                 if (!currentChatId) {
-                    chatData.title = localChatHistory[0].text.substring(0, 40); // Limit title length
+                    chatData.title = localChatHistory[0].text.substring(0, 40);
                     const newChatRef = userChatsRef.push(chatData); 
                     currentChatId = newChatRef.key;
                 } else {
@@ -456,10 +465,15 @@
             const appContainer = document.getElementById('app-container');
             let menuToggleTimeout;
             
-            document.addEventListener('click', () => {
+            // --- NEW: Global click listener to close dropdowns and cancel edits ---
+            document.addEventListener('click', (e) => {
                 if (activeDropdown) {
                     activeDropdown.style.display = 'none';
                     activeDropdown = null;
+                }
+                // If the click is not inside a rename input, cancel all renames
+                if (!e.target.closest('.rename-input')) {
+                    cancelAllRenames();
                 }
             });
 
@@ -530,4 +544,3 @@
     </script>
 </body>
 </html>
-I think there's a small issue with the code. See, when a new chat starts, the title of the chat in the history bar is taken from the first line of my message, so it can be long, but that's what makes the action buttons be displayed a bit off the screen, because of the long title, please make sure you fix this in a beautiful way
