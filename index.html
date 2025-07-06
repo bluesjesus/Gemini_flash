@@ -523,43 +523,82 @@
             });
             sidebarOverlay.addEventListener('click', closeSidebar); 
             
-            let isDragging = false, startX = 0, currentTranslate = 0;
-            const dragStart = (e) => {
-                const t = e.type === 'touchstart' ? e.touches[0] : e;
-                const s = document.body.classList.contains('sidebar-open');
-                if (s && t.target.closest('#chat-history-list')) { return; }
-                if (s || t.clientX < 70) {
-                    isDragging = true;
-                    startX = t.clientX;
-                    sidebar.classList.add('no-transition');
-                    currentTranslate = s ? 0 : -sidebar.offsetWidth;
-                    document.body.classList.add('is-dragging');
-                }
-            };
-            const dragMove = (e) => {
-                if (!isDragging) return;
-                const t = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
-                const n = t - startX;
-                let s = Math.min(0, Math.max(-sidebar.offsetWidth, currentTranslate + n));
-                sidebar.style.transform = `translateX(${s}px)`;
-                sidebarOverlay.style.opacity = 1 - (Math.abs(s) / sidebar.offsetWidth);
-            };
-            const dragEnd = (e) => {
-                if (!isDragging) return;
-                isDragging = false;
-                sidebar.classList.remove('no-transition');
-                sidebarOverlay.style.opacity = '';
-                document.body.classList.remove('is-dragging');
-                const t = new DOMMatrix(getComputedStyle(sidebar).transform).m41;
-                t > -sidebar.offsetWidth / 2 ? openSidebar() : closeSidebar();
-            };
-            document.body.addEventListener('mousedown', dragStart);
-            document.body.addEventListener('mousemove', dragMove);
-            document.body.addEventListener('mouseup', dragEnd);
-            document.body.addEventListener('mouseleave', dragEnd);
-            document.body.addEventListener('touchstart', dragStart, { passive: true });
-            document.body.addEventListener('touchmove', dragMove, { passive: true });
-            document.body.addEventListener('touchend', dragEnd);
+            // --- PASTE THIS NEW, COMPLETE BLOCK IN ITS PLACE ---
+
+let isDragging = false;
+let startX = 0, startY = 0;
+let currentTranslate = 0;
+let dragDirection = null; // Can be 'horizontal', 'vertical', or null
+
+const dragStart = (e) => {
+    const t = e.type === 'touchstart' ? e.touches[0] : e;
+    const s = document.body.classList.contains('sidebar-open');
+
+    if (s && t.target.closest('#chat-history-list')) { return; }
+
+    if (s || t.clientX < 70) {
+        isDragging = true;
+        startX = t.clientX;
+        startY = t.clientY;
+        dragDirection = null; // Reset direction on new drag
+        sidebar.classList.add('no-transition');
+        currentTranslate = s ? 0 : -sidebar.offsetWidth;
+    }
+};
+
+const dragMove = (e) => {
+    if (!isDragging) return;
+    const t = e.type === 'touchmove' ? e.touches[0] : e;
+    const deltaX = t.clientX - startX;
+    const deltaY = t.clientY - startY;
+
+    if (dragDirection === null) {
+        // Determine drag direction on the first move
+        if (Math.abs(deltaX) > Math.abs(deltaY) + 3) { // Horizontal threshold
+            dragDirection = 'horizontal';
+            document.body.classList.add('is-dragging'); // Freeze body scroll
+        } else {
+            dragDirection = 'vertical';
+        }
+    }
+
+    if (dragDirection === 'horizontal') {
+        // This is the key: prevent default browser action (scrolling)
+        // only when we are sure it's a horizontal sidebar drag.
+        e.preventDefault();
+
+        const newTranslate = currentTranslate + deltaX;
+        const s = Math.min(0, Math.max(-sidebar.offsetWidth, newTranslate));
+        sidebar.style.transform = `translateX(${s}px)`;
+        sidebarOverlay.style.opacity = 1 - (Math.abs(s) / sidebar.offsetWidth);
+    }
+    // If dragDirection is 'vertical', we do nothing and let the browser scroll normally.
+};
+
+const dragEnd = (e) => {
+    if (!isDragging) return;
+    
+    if (dragDirection === 'horizontal') {
+        const t = new DOMMatrix(getComputedStyle(sidebar).transform).m41;
+        t > -sidebar.offsetWidth / 2 ? openSidebar() : closeSidebar();
+    }
+    
+    isDragging = false;
+    dragDirection = null;
+    sidebar.classList.remove('no-transition');
+    sidebarOverlay.style.opacity = '';
+    document.body.classList.remove('is-dragging');
+};
+
+document.body.addEventListener('mousedown', dragStart);
+document.body.addEventListener('mousemove', dragMove);
+document.body.addEventListener('mouseup', dragEnd);
+document.body.addEventListener('mouseleave', dragEnd);
+
+// CRITICAL: passive must be false for preventDefault() to work.
+document.body.addEventListener('touchstart', dragStart, { passive: false });
+document.body.addEventListener('touchmove', dragMove, { passive: false });
+document.body.addEventListener('touchend', dragEnd);
         });
     </script>
 </body>
