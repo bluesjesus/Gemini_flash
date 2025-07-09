@@ -509,18 +509,28 @@
             
             let isDragging = false, startX = 0, startY = 0, currentTranslate = 0, dragDirection = null;
             const dragStart = (e) => {
-                const t = e.type === 'touchstart' ? e.touches[0] : e;
-                const s = document.body.classList.contains('sidebar-open');
-                if (s && t.target.closest('#chat-history-list')) { return; }
-                if (s || t.clientX < 80) {
-                    isDragging = true;
-                    startX = t.clientX;
-                    startY = t.clientY;
-                    dragDirection = null;
-                    sidebar.classList.add('no-transition');
-                    currentTranslate = s ? 0 : -sidebar.offsetWidth;
-                }
-            };
+    const t = e.type === 'touchstart' ? e.touches[0] : e;
+    const s = document.body.classList.contains('sidebar-open');
+
+    // Condition 1: If sidebar is open, check for exceptions
+    if (s) {
+        // Exception 1: Don't drag if user is scrolling the history list
+        if (t.target.closest('#chat-history-list')) return;
+        // Exception 2: Don't drag if user is interacting with the sidebar footer
+        if (t.target.closest('.sidebar-footer')) return;
+    }
+
+    // Condition 2: If sidebar is closed, only allow drag from the edge hotspot
+    if (!s && t.clientX > 80) return;
+
+    // If neither of the above returned, it's a valid drag.
+    isDragging = true;
+    startX = t.clientX;
+    startY = t.clientY;
+    dragDirection = null;
+    sidebar.classList.add('no-transition');
+    currentTranslate = s ? 0 : -sidebar.offsetWidth;
+};
             const dragMove = (e) => {
                 if (!isDragging) return;
                 const t = e.type === 'touchmove' ? e.touches[0] : e;
