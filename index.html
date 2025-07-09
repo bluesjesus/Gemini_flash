@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>AI Chat</title>
     
-    <!-- NEW: Using the Lexend font for a cleaner, ChatGPT-like feel -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600&display=swap" rel="stylesheet">
@@ -24,7 +23,6 @@
             --border-color: #e5e5e5;
             --user-msg-bg: #e9e9eb;
             --ai-msg-bg: transparent; 
-            /* NEW: Updated font stack to use Lexend */
             --system-font: 'Lexend', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             --sidebar-width: 280px;
             --code-bg: #f0f2f5; 
@@ -32,19 +30,20 @@
         }
         html { scroll-behavior: smooth; }
         body, html { margin: 0; padding: 0; font-family: var(--system-font); height: 100%; width: 100%; overflow: hidden; background-color: var(--background-color); color: var(--text-color); }
+        body.is-dragging { user-select: none; -webkit-user-select: none; }
         body.is-dragging #chat-messages { overflow-y: hidden; }
+
         #app-container { display: flex; height: 100dvh; width: 100vw; position: relative; }
         #sidebar { width: var(--sidebar-width); max-width: 85vw; height: 100%; background-color: var(--sidebar-bg); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; position: fixed; left: 0; top: 0; transform: translateX(calc(-1 * var(--sidebar-width))); transition: transform 0.4s cubic-bezier(0.25, 0.1, 0.25, 1.0); z-index: 1000; will-change: transform; }
         #sidebar.no-transition { transition: none; }
         .sidebar-header { padding: 1rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
         .sidebar-header h2 { margin: 0; font-size: 1.1rem; }
         
-        /* --- NEW: Container for sidebar header buttons --- */
         .sidebar-header-actions { display: flex; align-items: center; gap: 0.25rem; }
         .sidebar-action-btn { font-size: 1.5rem; background: none; border: none; cursor: pointer; color: var(--text-color); padding: 0.5rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; }
         .sidebar-action-btn:hover { background-color: #dcdce0; }
         #new-chat-btn { font-size: 1.5rem; }
-        #sidebar-close-btn { font-size: 2rem; line-height: 1; padding-bottom: 5px; } /* Adjust close button style */
+        #sidebar-close-btn { font-size: 2rem; line-height: 1; padding-bottom: 5px; }
 
         #chat-history-list { flex-grow: 1; overflow-y: auto; padding: 0.5rem 0; user-select: none; -webkit-user-select: none; }
         
@@ -102,8 +101,27 @@
         .code-block-wrapper:hover .copy-btn { opacity: 1; }
         .copy-btn:hover { background: #dcdce0; }
         .copy-btn:active { transform: scale(0.95); }
-        @keyframes gradientWave { from { opacity: 0; color: #aaa; transform: translateY(5px); } to { opacity: 1; color: var(--text-color); transform: translateY(0); } }
-        .word-anim { opacity: 0; display: inline-block; animation: gradientWave 0.2s ease-out forwards; }
+        
+        /* --- NEW: Enhanced "Gradient Wave" Animation --- */
+        @keyframes gradientWave {
+            from {
+                opacity: 0;
+                color: #999; /* Start as a lighter gray */
+                transform: translateY(6px);
+            }
+            to {
+                opacity: 1;
+                color: var(--text-color); /* Animate to the final text color */
+                transform: translateY(0);
+            }
+        }
+        .word-anim {
+            opacity: 0;
+            display: inline-block;
+            /* A refined easing curve for the "magical flow" effect */
+            animation: gradientWave 0.4s cubic-bezier(0.215, 0.610, 0.355, 1.000) forwards;
+        }
+
         .thinking-indicator { display: flex; gap: 4px; align-items: center; padding: 0.75rem 1.1rem; height: 1.5rem; }
         .thinking-indicator span { width: 7px; height: 7px; background-color: var(--primary-accent); border-radius: 50%; animation: sleekWave 1.2s ease-in-out infinite; }
         .thinking-indicator span:nth-child(2) { animation-delay: 0.1s; }
@@ -118,7 +136,6 @@
         <aside id="sidebar">
             <div class="sidebar-header">
                 <h2>Chat History</h2>
-                <!-- NEW: Button container with close button -->
                 <div class="sidebar-header-actions">
                     <button id="new-chat-btn" class="sidebar-action-btn" title="New Chat">+</button>
                     <button id="sidebar-close-btn" class="sidebar-action-btn" title="Close Menu">×</button>
@@ -190,12 +207,9 @@
             function cancelAllRenames() {
                 const input = document.querySelector('.rename-input');
                 if (!input) return;
-                
                 const titleContainer = input.parentElement;
-                const originalTitle = input.dataset.originalTitle;
-                
                 if (titleContainer) {
-                    titleContainer.textContent = originalTitle;
+                    titleContainer.textContent = input.dataset.originalTitle;
                 }
             }
 
@@ -245,7 +259,7 @@
                         historyItem.className = 'chat-history-item';
                         historyItem.dataset.chatId = chat.id;
 
-                        const titleText = chat.title || chat.messages[0]?.text.substring(0, 35) || 'New Chat';
+                        const titleText = chat.title || chat.messages[0]?.text || 'New Chat';
                         
                         const titleContainer = document.createElement('div');
                         titleContainer.className = 'chat-title-container';
@@ -501,7 +515,7 @@
             menuToggle.addEventListener('click', (e) => { e.stopPropagation(); openSidebar(); });
             sidebarCloseBtn.addEventListener('click', closeSidebar);
             appContainer.addEventListener('click', (e) => {
-                const hotspotWidth = 80; // Increased hotspot width
+                const hotspotWidth = 80;
                 if (e.clientX <= hotspotWidth && !document.body.classList.contains('sidebar-open')) {
                     menuToggle.classList.add('visible');
                     clearTimeout(menuToggleTimeout);
@@ -517,7 +531,7 @@
                 const t = e.type === 'touchstart' ? e.touches[0] : e;
                 const s = document.body.classList.contains('sidebar-open');
                 if (s && t.target.closest('#chat-history-list')) { return; }
-                if (s || t.clientX < 80) { // Increased hotspot width
+                if (s || t.clientX < 80) {
                     isDragging = true;
                     startX = t.clientX;
                     startY = t.clientY;
