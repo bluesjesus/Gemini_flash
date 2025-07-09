@@ -5,11 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>AI Chat</title>
     
-    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
+    <!-- NEW: Using the Lexend font for a cleaner, ChatGPT-like feel -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"></noscript>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600&display=swap" rel="stylesheet">
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-light.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
@@ -25,7 +24,8 @@
             --border-color: #e5e5e5;
             --user-msg-bg: #e9e9eb;
             --ai-msg-bg: transparent; 
-            --system-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            /* NEW: Updated font stack to use Lexend */
+            --system-font: 'Lexend', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             --sidebar-width: 280px;
             --code-bg: #f0f2f5; 
             --code-text-color: #383a42;
@@ -38,34 +38,27 @@
         #sidebar.no-transition { transition: none; }
         .sidebar-header { padding: 1rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
         .sidebar-header h2 { margin: 0; font-size: 1.1rem; }
-        #new-chat-btn { font-size: 1.5rem; background: none; border: none; cursor: pointer; color: var(--text-color); padding: 0.5rem;}
-        #chat-history-list { flex-grow: 1; overflow-y: auto; padding: 0.5rem 0; }
+        
+        /* --- NEW: Container for sidebar header buttons --- */
+        .sidebar-header-actions { display: flex; align-items: center; gap: 0.25rem; }
+        .sidebar-action-btn { font-size: 1.5rem; background: none; border: none; cursor: pointer; color: var(--text-color); padding: 0.5rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; }
+        .sidebar-action-btn:hover { background-color: #dcdce0; }
+        #new-chat-btn { font-size: 1.5rem; }
+        #sidebar-close-btn { font-size: 2rem; line-height: 1; padding-bottom: 5px; } /* Adjust close button style */
+
+        #chat-history-list { flex-grow: 1; overflow-y: auto; padding: 0.5rem 0; user-select: none; -webkit-user-select: none; }
         
         .chat-history-item { position: relative; display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; cursor: pointer; border-bottom: 1px solid var(--border-color); }
         .chat-title-container { flex-grow: 1; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; padding-right: 1rem; }
         .rename-input { font: inherit; border: 1px solid var(--primary-accent); border-radius: 4px; padding: 0.2rem 0.4rem; width: 100%; box-sizing: border-box;}
-        
-        /* --- NEW: Styles for the beautiful triple-dot menu --- */
         .chat-actions-btn { background: none; border: none; cursor: pointer; padding: 0.25rem 0.5rem; border-radius: 4px; opacity: 0; transition: opacity 0.2s ease; line-height: 1; }
         .chat-history-item:hover .chat-actions-btn, .chat-history-item.active .chat-actions-btn { opacity: 1; }
         .chat-actions-btn svg { width: 18px; height: 18px; fill: #555; pointer-events: none; }
         .chat-actions-btn:hover { background-color: #dcdce0; }
-        .actions-dropdown {
-            position: absolute;
-            top: 2.5rem;
-            right: 1rem;
-            background-color: #fff;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            z-index: 10;
-            overflow: hidden;
-            display: none; /* Hidden by default */
-            border: 1px solid var(--border-color);
-        }
+        .actions-dropdown { position: absolute; top: 2.5rem; right: 1rem; background-color: #fff; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 10; overflow: hidden; display: none; border: 1px solid var(--border-color); }
         .actions-dropdown button { display: flex; align-items: center; gap: 0.5rem; width: 100%; padding: 0.75rem 1rem; background: none; border: none; text-align: left; cursor: pointer; font-size: 0.9rem; min-width: 120px; }
         .actions-dropdown button:hover { background-color: var(--sidebar-bg); }
         .actions-dropdown .delete-action { color: #d92d20; }
-        
         .chat-history-item.active { background-color: #dcdce0; font-weight: 500; }
         .sidebar-footer { padding: 1rem; border-top: 1px solid var(--border-color); }
         #logout-btn { width: 100%; padding: 0.5rem; background: none; color: var(--text-color); border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; font-size: 1rem; display: none; align-items: center; gap: 0.75rem; text-align: left; }
@@ -81,16 +74,17 @@
         #menu-toggle.visible { opacity: 1; transform: scale(1) translateX(0); pointer-events: auto; }
         #chat-header { padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; background: var(--background-color); z-index: 10; }
         #chat-header h1 { font-size: 1.1rem; margin: 0; }
-        #chat-messages { flex-grow: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; min-height: 0; width: 100%; max-width: 800px; margin-left: auto; margin-right: auto; box-sizing: border-box; scrollbar-width: none; -ms-overflow-style: none; user-select: text; -webkit-user-select: text; touch-action: pan-y; }
+        #chat-messages { flex-grow: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; min-height: 0; width: 100%; max-width: 800px; margin-left: auto; margin-right: auto; box-sizing: border-box; scrollbar-width: none; -ms-overflow-style: none; touch-action: pan-y; }
         #chat-messages::-webkit-scrollbar { display: none; }
-        .message-container { max-width: 85%; margin-bottom: 1rem; padding: 0.75rem 1.1rem; border-radius: 18px; line-height: 1.6; word-wrap: break-word; opacity: 0; transform: translateY(15px); animation: fadeInAndRise 0.4s ease forwards; }
+        .message-container { max-width: 85%; margin-bottom: 1rem; border-radius: 18px; line-height: 1.6; word-wrap: break-word; opacity: 0; transform: translateY(15px); animation: fadeInAndRise 0.4s ease forwards; }
+        .message-container.ai { padding: 0.75rem 1.1rem; line-height: 1.7; }
         #chat-messages.is-loading-history .message-container { animation: none; opacity: 1; transform: none; }
         @keyframes fadeInAndRise { to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeInContainerOnly { from { opacity: 0; } to { opacity: 1; } }
         .message-container p:first-child { margin-top: 0; }
         .message-container p:last-child { margin-bottom: 0; }
-        .message-container.user { background-color: var(--user-msg-bg); align-self: flex-end; border-bottom-right-radius: 4px; }
-        .message-container.ai { background-color: var(--ai-msg-bg); align-self: flex-start; border: none; padding-left: 0; padding-right: 0; transform: none; animation: fadeInContainerOnly 0.2s ease forwards; }
+        .message-container.user { padding: 0.75rem 1.1rem; background-color: var(--user-msg-bg); align-self: flex-end; border-bottom-right-radius: 4px; }
+        .message-container.ai { background-color: var(--ai-msg-bg); align-self: flex-start; border: none; transform: none; animation: fadeInContainerOnly 0.2s ease forwards; }
         .message-container.ai strong, .message-container.ai b { font-weight: 600; }
         .message-container.ai h1, .message-container.ai h2, .message-container.ai h3 { margin-top: 1.2rem; margin-bottom: 0.5rem; line-height: 1.3; }
         .welcome-message { align-self: center; text-align: center; margin-top: 2rem; border: none !important; padding: 0 !important; animation: fadeInAndRise 0.4s ease forwards; }
@@ -122,7 +116,14 @@
     <div id="app-container">
         <div id="sidebar-overlay"></div>
         <aside id="sidebar">
-            <div class="sidebar-header"><h2>Chat History</h2><button id="new-chat-btn" title="New Chat">+</button></div>
+            <div class="sidebar-header">
+                <h2>Chat History</h2>
+                <!-- NEW: Button container with close button -->
+                <div class="sidebar-header-actions">
+                    <button id="new-chat-btn" class="sidebar-action-btn" title="New Chat">+</button>
+                    <button id="sidebar-close-btn" class="sidebar-action-btn" title="Close Menu">×</button>
+                </div>
+            </div>
             <div id="chat-history-list"></div>
             <div class="sidebar-footer">
                 <button id="logout-btn">
@@ -189,18 +190,21 @@
             function cancelAllRenames() {
                 const input = document.querySelector('.rename-input');
                 if (!input) return;
+                
                 const titleContainer = input.parentElement;
+                const originalTitle = input.dataset.originalTitle;
+                
                 if (titleContainer) {
-                    titleContainer.textContent = input.dataset.originalTitle;
+                    titleContainer.textContent = originalTitle;
                 }
             }
 
             function handleRenameChat(chatId, titleContainer) {
                 if (!currentUser || !chatId) return;
-                cancelAllRenames();
+                cancelAllRenames(); 
 
                 const originalTitle = titleContainer.textContent;
-                titleContainer.innerHTML = ''; // Clear the container
+                titleContainer.innerHTML = ''; 
                 
                 const input = document.createElement('input');
                 input.type = 'text';
@@ -210,19 +214,16 @@
                 
                 const saveRename = () => {
                     const newTitle = input.value.trim();
-                    // Only save if the title has actually changed
                     if (newTitle && newTitle !== originalTitle) {
                         db.ref(`chats/${currentUser.uid}/${chatId}`).update({ title: newTitle });
                     } else {
-                        // Otherwise, just revert the UI without a DB call
                         titleContainer.textContent = originalTitle;
                     }
                 };
-
                 input.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') input.blur();
                     if (e.key === 'Escape') {
-                         input.value = originalTitle; // Revert on escape
+                         input.value = originalTitle;
                          input.blur();
                     }
                 });
@@ -244,7 +245,7 @@
                         historyItem.className = 'chat-history-item';
                         historyItem.dataset.chatId = chat.id;
 
-                        const titleText = chat.title || chat.messages[0]?.text || 'New Chat';
+                        const titleText = chat.title || chat.messages[0]?.text.substring(0, 35) || 'New Chat';
                         
                         const titleContainer = document.createElement('div');
                         titleContainer.className = 'chat-title-container';
@@ -474,6 +475,7 @@
             const menuToggle = document.getElementById('menu-toggle'); 
             const sidebarOverlay = document.getElementById('sidebar-overlay');
             const appContainer = document.getElementById('app-container');
+            const sidebarCloseBtn = document.getElementById('sidebar-close-btn');
             let menuToggleTimeout;
             
             document.addEventListener('click', (e) => {
@@ -486,11 +488,20 @@
                 }
             });
 
-            const openSidebar = () => { /* ... (function unchanged) ... */ };
-            const closeSidebar = () => { /* ... (function unchanged) ... */ }; 
-            menuToggle.addEventListener('click', (e) => { e.stopPropagation(); document.body.classList.contains('sidebar-open') ? closeSidebar() : openSidebar(); });
+            const openSidebar = () => { 
+                sidebar.style.transform = 'translateX(0)'; 
+                document.body.classList.add('sidebar-open');
+                menuToggle.classList.remove('visible');
+                clearTimeout(menuToggleTimeout);
+            };
+            const closeSidebar = () => { 
+                sidebar.style.transform = `translateX(-${sidebar.offsetWidth}px)`;
+                document.body.classList.remove('sidebar-open'); 
+            }; 
+            menuToggle.addEventListener('click', (e) => { e.stopPropagation(); openSidebar(); });
+            sidebarCloseBtn.addEventListener('click', closeSidebar);
             appContainer.addEventListener('click', (e) => {
-                const hotspotWidth = 70;
+                const hotspotWidth = 80; // Increased hotspot width
                 if (e.clientX <= hotspotWidth && !document.body.classList.contains('sidebar-open')) {
                     menuToggle.classList.add('visible');
                     clearTimeout(menuToggleTimeout);
@@ -501,42 +512,60 @@
             });
             sidebarOverlay.addEventListener('click', closeSidebar); 
             
-            let isDragging = false, startX = 0, currentTranslate = 0;
+            let isDragging = false, startX = 0, startY = 0, currentTranslate = 0, dragDirection = null;
             const dragStart = (e) => {
                 const t = e.type === 'touchstart' ? e.touches[0] : e;
                 const s = document.body.classList.contains('sidebar-open');
                 if (s && t.target.closest('#chat-history-list')) { return; }
-                if (s || t.clientX < 70) {
+                if (s || t.clientX < 80) { // Increased hotspot width
                     isDragging = true;
                     startX = t.clientX;
+                    startY = t.clientY;
+                    dragDirection = null;
                     sidebar.classList.add('no-transition');
                     currentTranslate = s ? 0 : -sidebar.offsetWidth;
-                    document.body.classList.add('is-dragging');
                 }
             };
             const dragMove = (e) => {
                 if (!isDragging) return;
-                const t = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
-                const n = t - startX;
-                let s = Math.min(0, Math.max(-sidebar.offsetWidth, currentTranslate + n));
-                sidebar.style.transform = `translateX(${s}px)`;
-                sidebarOverlay.style.opacity = 1 - (Math.abs(s) / sidebar.offsetWidth);
+                const t = e.type === 'touchmove' ? e.touches[0] : e;
+                const deltaX = t.clientX - startX;
+                const deltaY = t.clientY - startY;
+
+                if (dragDirection === null) {
+                    if (Math.abs(deltaX) > Math.abs(deltaY) + 3) {
+                        dragDirection = 'horizontal';
+                        document.body.classList.add('is-dragging');
+                    } else {
+                        dragDirection = 'vertical';
+                    }
+                }
+                if (dragDirection === 'horizontal') {
+                    e.preventDefault();
+                    const newTranslate = currentTranslate + deltaX;
+                    const s = Math.min(0, Math.max(-sidebar.offsetWidth, newTranslate));
+                    sidebar.style.transform = `translateX(${s}px)`;
+                    sidebarOverlay.style.opacity = 1 - (Math.abs(s) / sidebar.offsetWidth);
+                }
             };
             const dragEnd = (e) => {
                 if (!isDragging) return;
+                if (dragDirection === 'horizontal') {
+                    const t = new DOMMatrix(getComputedStyle(sidebar).transform).m41;
+                    t > -sidebar.offsetWidth / 2 ? openSidebar() : closeSidebar();
+                }
                 isDragging = false;
+                dragDirection = null;
                 sidebar.classList.remove('no-transition');
                 sidebarOverlay.style.opacity = '';
                 document.body.classList.remove('is-dragging');
-                const t = new DOMMatrix(getComputedStyle(sidebar).transform).m41;
-                t > -sidebar.offsetWidth / 2 ? openSidebar() : closeSidebar();
             };
             document.body.addEventListener('mousedown', dragStart);
             document.body.addEventListener('mousemove', dragMove);
             document.body.addEventListener('mouseup', dragEnd);
             document.body.addEventListener('mouseleave', dragEnd);
-            document.body.addEventListener('touchstart', dragStart, { passive: true });
-            document.body.addEventListener('touchmove', dragMove, { passive: true });
+            document.body.addEventListener('touchstart', dragStart, { passive: false });
+            document.body.addEventListener('touchmove', dragMove, { passive: false });
             document.body.addEventListener('touchend', dragEnd);
         });
     </script>
