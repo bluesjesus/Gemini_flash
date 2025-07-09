@@ -435,7 +435,7 @@
                                 span.className = 'word-anim';
                                 span.textContent = word;
                                 targetContainer.appendChild(span);
-                                smartScroll();
+                                smoothGlideScroll();
                                 await new Promise(res => setTimeout(res, WORD_STREAM_DELAY));
                             } else { targetContainer.appendChild(document.createTextNode(word)); }
                         }
@@ -469,7 +469,7 @@
                         wrapper.appendChild(btn);
                         container.appendChild(wrapper);
                         hljs.highlightElement(wrapper.querySelector('code'));
-                        smartScroll();
+                        smoothGlideScroll();
                         continue;
                     }
                     const newBlock = document.createElement(sourceNode.tagName || 'p');
