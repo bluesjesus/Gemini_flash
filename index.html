@@ -69,29 +69,20 @@
         #sidebar-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.2); opacity: 0; z-index: 999; pointer-events: none; transition: opacity 0.4s ease; }
         body.sidebar-open #sidebar-overlay { opacity: 1; pointer-events: auto; }
         body.sidebar-open #chat-area { filter: brightness(0.9); }
-        
-        #chat-header { padding: 0.5rem 1rem 0.5rem 3.5rem; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; background: var(--background-color); z-index: 10; }
-        #chat-header h1 { font-size: 1.1rem; margin: 0; }
-        
         #menu-toggle { position: fixed; top: 10px; left: 12px; z-index: 1001; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border-color); background: rgba(255, 255, 255, 0.7); -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px); font-size: 1.5rem; color: var(--text-color); cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: center; padding: 0; transition: all 0.2s ease; }
         #menu-toggle:hover { background: #fff; transform: scale(1.05); }
-        
+        #chat-header { padding: 0.5rem 1rem 0.5rem 3.5rem; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; background: var(--background-color); z-index: 10; }
+        #chat-header h1 { font-size: 1.1rem; margin: 0; }
         #chat-messages { flex-grow: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; min-height: 0; width: 100%; max-width: 800px; margin-left: auto; margin-right: auto; box-sizing: border-box; scrollbar-width: none; -ms-overflow-style: none; touch-action: pan-y; }
         #chat-messages::-webkit-scrollbar { display: none; }
-        
-        /* --- NEW: CSS for smooth "gliding" scroll --- */
-        #chat-messages > .message-wrapper {
-            transition: transform 0.4s cubic-bezier(0.25, 0.1, 0.25, 1.0);
-        }
-
-        .message-container { max-width: 85%; margin-bottom: 1rem; border-radius: 18px; line-height: 1.6; word-wrap: break-word; opacity: 0; transform: translateY(15px); animation: fadeInAndRise 0.4s ease forwards; }
-        .message-container.ai { padding: 0.75rem 1.1rem; line-height: 1.7; }
+        .message-container { max-width: 85%; margin-bottom: 1rem; padding: 0.75rem 1.1rem; border-radius: 18px; line-height: 1.6; word-wrap: break-word; opacity: 0; transform: translateY(15px); animation: fadeInAndRise 0.4s ease forwards; }
+        .message-container.ai { line-height: 1.7; }
         #chat-messages.is-loading-history .message-container { animation: none; opacity: 1; transform: none; }
         @keyframes fadeInAndRise { to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeInContainerOnly { from { opacity: 0; } to { opacity: 1; } }
         .message-container p:first-child { margin-top: 0; }
         .message-container p:last-child { margin-bottom: 0; }
-        .message-container.user { padding: 0.75rem 1.1rem; background-color: var(--user-msg-bg); align-self: flex-end; border-bottom-right-radius: 4px; }
+        .message-container.user { background-color: var(--user-msg-bg); align-self: flex-end; border-bottom-right-radius: 4px; }
         .message-container.ai { background-color: var(--ai-msg-bg); align-self: flex-start; border: none; transform: none; animation: fadeInContainerOnly 0.2s ease forwards; }
         .message-container.ai strong, .message-container.ai b { font-weight: 600; }
         .message-container.ai h1, .message-container.ai h2, .message-container.ai h3 { margin-top: 1.2rem; margin-bottom: 0.5rem; line-height: 1.3; }
@@ -149,7 +140,6 @@
         </aside>
         <main id="chat-area">
             <header id="chat-header">
-                <!-- NEW: Menu toggle is now part of the header flow -->
                 <button id="menu-toggle">☰</button>
                 <h1>AI Chat</h1>
             </header>
@@ -375,9 +365,6 @@
                 closeSidebar();
             }
             function addMessageToUI(sender, text = '') { 
-                const wrapper = document.createElement('div');
-                wrapper.className = 'message-wrapper';
-
                 const m = document.createElement('div'); 
                 m.className = `message-container ${sender}`; 
                 if (sender === 'user') {
@@ -385,26 +372,17 @@
                     p.textContent = text;
                     m.appendChild(p);
                 }
-                wrapper.appendChild(m);
-                chatMessages.appendChild(wrapper); 
+                chatMessages.appendChild(m); 
                 chatMessages.scrollTop = chatMessages.scrollHeight; 
                 return m; 
             }
             
-            // --- NEW: Gliding Scroll Logic ---
-            function smoothGlideScroll() {
+            function smartScroll() {
                 const isScrolledToBottom = chatMessages.scrollHeight - chatMessages.clientHeight <= chatMessages.scrollTop + 50;
-                if (!isScrolledToBottom) return;
-
-                const allMessageWrappers = Array.from(chatMessages.children);
-                const overflow = chatMessages.scrollHeight - chatMessages.clientHeight;
-                if (overflow > 0) {
-                    allMessageWrappers.forEach(el => {
-                        el.style.transform = `translateY(-${overflow}px)`;
-                    });
+                if (isScrolledToBottom) {
+                    chatMessages.scrollTo({ top: chatMessages.scrollHeight, behavior: 'smooth' });
                 }
             }
-
             async function processNode(sourceNode, targetContainer) {
                 const WORD_STREAM_DELAY = 15;
                 for (const child of Array.from(sourceNode.childNodes)) {
@@ -416,7 +394,7 @@
                                 span.className = 'word-anim';
                                 span.textContent = word;
                                 targetContainer.appendChild(span);
-                                smoothGlideScroll();
+                                smartScroll();
                                 await new Promise(res => setTimeout(res, WORD_STREAM_DELAY));
                             } else { targetContainer.appendChild(document.createTextNode(word)); }
                         }
@@ -450,7 +428,7 @@
                         wrapper.appendChild(btn);
                         container.appendChild(wrapper);
                         hljs.highlightElement(wrapper.querySelector('code'));
-                        smoothGlideScroll();
+                        smartScroll();
                         continue;
                     }
                     const newBlock = document.createElement(sourceNode.tagName || 'p');
