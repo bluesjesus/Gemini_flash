@@ -73,27 +73,8 @@
         #menu-toggle.visible { opacity: 1; transform: scale(1) translateX(0); pointer-events: auto; }
         #chat-header { padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; background: var(--background-color); z-index: 10; }
         #chat-header h1 { font-size: 1.1rem; margin: 0; }
-        
-        #chat-messages {
-            flex-grow: 1;
-            overflow-y: auto;
-            padding: 1rem;
-            display: flex;
-            flex-direction: column;
-            min-height: 0;
-            width: 100%;
-            max-width: 800px;
-            margin-left: auto;
-            margin-right: auto;
-            box-sizing: border-box;
-            scrollbar-width: none;
-            -ms-overflow-style: none;
-            touch-action: pan-y;
-            /* --- NEW: The key to smooth scrolling --- */
-            scroll-behavior: smooth;
-        }
+        #chat-messages { flex-grow: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; min-height: 0; width: 100%; max-width: 800px; margin-left: auto; margin-right: auto; box-sizing: border-box; scrollbar-width: none; -ms-overflow-style: none; touch-action: pan-y; scroll-behavior: smooth; }
         #chat-messages::-webkit-scrollbar { display: none; }
-        
         .message-container { max-width: 85%; margin-bottom: 1rem; border-radius: 18px; line-height: 1.6; word-wrap: break-word; opacity: 0; transform: translateY(15px); animation: fadeInAndRise 0.4s ease forwards; }
         .message-container.ai { padding: 0.75rem 1.1rem; line-height: 1.7; }
         #chat-messages.is-loading-history .message-container { animation: none; opacity: 1; transform: none; }
@@ -155,7 +136,7 @@
             }
             #desktop-sidebar-toggle {
                 display: flex;
-                position: absolute; /* Changed from fixed to be relative to chat-area */
+                position: absolute;
                 left: 10px;
                 top: 10px;
                 z-index: 1001;
@@ -211,7 +192,6 @@
             </div>
         </aside>
         <main id="chat-area">
-            <!-- NEW: Desktop toggle button -->
             <button id="desktop-sidebar-toggle" title="Toggle Sidebar">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
             </button>
@@ -450,9 +430,36 @@
                 return m; 
             }
             
-            async function streamResponse(container, text, onComplete) {
+            function smartScroll() {
+                const isScrolledToBottom = chatMessages.scrollHeight - chatMessages.clientHeight <= chatMessages.scrollTop + 50;
+                if (isScrolledToBottom) {
+                    chatMessages.scrollTo({ top: chatMessages.scrollHeight, behavior: 'smooth' });
+                }
+            }
+            async function processNode(sourceNode, targetContainer) {
                 const WORD_STREAM_DELAY = 15;
-                const PAUSE_AFTER_BLOCK = 100;
+                for (const child of Array.from(sourceNode.childNodes)) {
+                    if (child.nodeType === Node.TEXT_NODE) {
+                        const words = child.nodeValue.split(/(\s+)/);
+                        for (const word of words) {
+                            if (word.trim().length > 0) {
+                                const span = document.createElement('span');
+                                span.className = 'word-anim';
+                                span.textContent = word;
+                                targetContainer.appendChild(span);
+                                smartScroll();
+                                await new Promise(res => setTimeout(res, WORD_STREAM_DELAY));
+                            } else { targetContainer.appendChild(document.createTextNode(word)); }
+                        }
+                    } else if (child.nodeType === Node.ELEMENT_NODE) {
+                        const newTargetElement = document.createElement(child.tagName);
+                        targetContainer.appendChild(newTargetElement);
+                        await processNode(child, newTargetElement);
+                    }
+                }
+            }
+            async function streamResponse(container, text, onComplete) {
+                const PAUSE_AFTER_BLOCK = 80;
                 marked.setOptions({
                     highlight: (code, lang) => hljs.getLanguage(lang) ? hljs.highlight(code, { language: lang }).value : hljs.highlightAuto(code).value,
                     langPrefix: 'hljs language-', gfm: true, breaks: true,
@@ -460,47 +467,29 @@
                 await fontsReadyPromise;
                 const tempDiv = document.createElement('div');
                 tempDiv.innerHTML = marked.parse(text);
-                
-                let wordCount = 0;
-                tempDiv.querySelectorAll('p, li, h1, h2, h3').forEach(block => {
-                    const words = Array.from(block.childNodes).flatMap(node => {
-                        if (node.nodeType === Node.TEXT_NODE) return node.nodeValue.split(/(\s+)/);
-                        return [node.outerHTML];
-                    }).filter(Boolean);
-
-                    let newHtml = '';
-                    words.forEach(wordOrHtml => {
-                        if (wordOrHtml.startsWith('<')) {
-                            newHtml += wordOrHtml;
-                        } else {
-                            newHtml += `<span class="word-anim" style="animation-delay: ${wordCount * 0.02}s">${wordOrHtml}</span>`;
-                            wordCount++;
-                        }
-                    });
-                    block.innerHTML = newHtml;
-                });
-                
-                container.innerHTML = tempDiv.innerHTML;
-                
-                container.querySelectorAll('pre').forEach(pre => {
-                    const wrapper = document.createElement('div');
-                    wrapper.className = 'code-block-wrapper';
-                    pre.parentNode.insertBefore(wrapper, pre);
-                    wrapper.appendChild(pre);
-                    const codeText = pre.querySelector('code').innerText;
-                    const btn = document.createElement('button');
-                    btn.className = 'copy-btn';
-                    btn.innerHTML = `<span>Copy</span>`;
-                    btn.onclick = () => navigator.clipboard.writeText(codeText).then(() => { btn.querySelector('span').textContent = 'Copied!'; setTimeout(() => { btn.querySelector('span').textContent = 'Copy'; }, 2000); });
-                    wrapper.appendChild(btn);
-                    hljs.highlightElement(pre.querySelector('code'));
-                });
-
-                chatMessages.scrollTo({ top: chatMessages.scrollHeight, behavior: 'smooth' });
-
-                if (onComplete) {
-                    onComplete(container.innerHTML);
+                container.innerHTML = '';
+                for (const sourceNode of Array.from(tempDiv.childNodes)) {
+                    if (sourceNode.tagName?.toLowerCase() === 'pre') {
+                        const wrapper = document.createElement('div');
+                        wrapper.className = 'code-block-wrapper';
+                        const codeText = sourceNode.querySelector('code').innerText;
+                        const btn = document.createElement('button');
+                        btn.className = 'copy-btn';
+                        btn.textContent = 'Copy Code';
+                        btn.onclick = () => navigator.clipboard.writeText(codeText).then(() => { btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = 'Copy Code'; }, 2000); });
+                        wrapper.appendChild(sourceNode.cloneNode(true));
+                        wrapper.appendChild(btn);
+                        container.appendChild(wrapper);
+                        hljs.highlightElement(wrapper.querySelector('code'));
+                        smartScroll();
+                        continue;
+                    }
+                    const newBlock = document.createElement(sourceNode.tagName || 'p');
+                    container.appendChild(newBlock);
+                    await processNode(sourceNode, newBlock);
+                    await new Promise(res => setTimeout(res, PAUSE_AFTER_BLOCK));
                 }
+                if (onComplete) onComplete(container.innerHTML);
             }
 
             async function handleSendMessage(e) {
@@ -521,7 +510,7 @@
                     let aiResponseText = '';
                     for (const item of responseArray) { const text = item?.candidates?.[0]?.content?.parts?.[0]?.text; if (text) aiResponseText += text; }
                     
-                    await streamResponse(aiMsgContainer, aiResponseText, (finalHtml) => {
+                    streamResponse(aiMsgContainer, aiResponseText, (finalHtml) => {
                         localChatHistory.push({ role: 'model', text: finalHtml });
                         saveChat();
                     });   
@@ -586,7 +575,7 @@
                 const t = e.type === 'touchstart' ? e.touches[0] : e;
                 const s = document.body.classList.contains('sidebar-open');
                 if (s) {
-                    if (t.target.closest('#chat-history-list') || t.target.closest('.sidebar-footer')) return;
+                    if (t.target.closest('#chat-history-list') || t.target.closest('.sidebar-footer') || t.target.closest('.sidebar-header')) return;
                 }
                 if (!s && t.clientX > 80) return;
 
