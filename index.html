@@ -385,12 +385,17 @@
                 return m; 
             }
             
-            function smartScroll() {
-                const isScrolledToBottom = chatMessages.scrollHeight - chatMessages.clientHeight <= chatMessages.scrollTop + 50;
-                if (isScrolledToBottom) {
-                    chatMessages.scrollTo({ top: chatMessages.scrollHeight, behavior: 'smooth' });
-                }
+            // --- REPLACE THE OLD smartScroll WITH THIS NEW VERSION ---
+            function smartScroll(element) {
+            const isScrolledToBottom = chatMessages.scrollHeight - chatMessages.clientHeight <= chatMessages.scrollTop + 50;
+    
+            // Only scroll if the user is already near the bottom AND we have an element to scroll to.
+                if (isScrolledToBottom && element) {
+                        // This is the magic: it tells the browser to smoothly scroll just enough
+                // to make sure the bottom of the element is visible.
+                element.scrollIntoView({ behavior: 'smooth', block: 'end', inline: 'nearest' });
             }
+        }
             async function processNode(sourceNode, targetContainer) {
                 const WORD_STREAM_DELAY = 15;
                 for (const child of Array.from(sourceNode.childNodes)) {
@@ -402,7 +407,7 @@
                                 span.className = 'word-anim';
                                 span.textContent = word;
                                 targetContainer.appendChild(span);
-                                smartScroll();
+                                smartScroll(span);
                                 await new Promise(res => setTimeout(res, WORD_STREAM_DELAY));
                             } else { targetContainer.appendChild(document.createTextNode(word)); }
                         }
@@ -436,7 +441,7 @@
                         wrapper.appendChild(btn);
                         container.appendChild(wrapper);
                         hljs.highlightElement(wrapper.querySelector('code'));
-                        smartScroll();
+                        smartScroll(span);
                         continue;
                     }
                     const newBlock = document.createElement(sourceNode.tagName || 'p');
