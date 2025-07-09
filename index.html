@@ -123,8 +123,30 @@
         .thinking-indicator span:nth-child(2) { animation-delay: 0.1s; }
         .thinking-indicator span:nth-child(3) { animation-delay: 0.2s; }
         @keyframes sleekWave { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
-        
-       
+        @media (min-width: 1024px) {
+        #sidebar {
+        transform: translateX(0);
+        transition: none; 
+        border-right: 1px solid var(--border-color);
+        }
+
+  
+        #chat-area {
+        margin-left: var(--sidebar-width);
+        }
+    
+   
+        #menu-toggle, #sidebar-close-btn, #sidebar-overlay {
+        display: none !important;
+        }
+    
+    
+        #chat-header {
+        padding-left: 1rem;
+        justify-content: center;
+        }
+    }
+           
     </style>
 </head>
 <body>
