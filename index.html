@@ -75,6 +75,8 @@
         #chat-header h1 { font-size: 1.1rem; margin: 0; }
         #chat-messages { flex-grow: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; min-height: 0; width: 100%; max-width: 800px; margin-left: auto; margin-right: auto; box-sizing: border-box; scrollbar-width: none; -ms-overflow-style: none; touch-action: pan-y; }
         #chat-messages::-webkit-scrollbar { display: none; }
+        #chat-messages > div { transition: transform 0.4s cubic-bezier(0.25, 0.1, 0.25, 1.0);
+       }
         .message-container { max-width: 85%; margin-bottom: 1rem; border-radius: 18px; line-height: 1.6; word-wrap: break-word; opacity: 0; transform: translateY(15px); animation: fadeInAndRise 0.4s ease forwards; }
         .message-container.ai { padding: 0.75rem 1.1rem; line-height: 1.7; }
         #chat-messages.is-loading-history .message-container { animation: none; opacity: 1; transform: none; }
@@ -401,10 +403,27 @@
                 return m; 
             }
             
-            function smartScroll() {
-                const isScrolledToBottom = chatMessages.scrollHeight - chatMessages.clientHeight <= chatMessages.scrollTop + 50;
-                if (isScrolledToBottom) { chatMessages.scrollTop = chatMessages.scrollHeight; }
-            }
+           // --- REPLACE WITH THIS NEW, SUPERIOR FUNCTION ---
+            function smoothGlideScroll() {
+              const isScrolledToBottom = chatMessages.scrollHeight - chatMessages.clientHeight <= chatMessages.scrollTop + 50;
+             if (!isScrolledToBottom) return; // Don't scroll if user has scrolled up
+
+    // This is the "glide" logic
+             const allMessages = Array.from(chatMessages.children);
+             const lastMessage = allMessages[allMessages.length - 1];
+    
+            if (lastMessage) {
+        // Calculate how much "overflow" there is (how much content is hidden at the top)
+            const overflow = chatMessages.scrollHeight - chatMessages.clientHeight;
+            if (overflow > 0) {
+            // Apply a negative Y-transform to every message container,
+            // effectively "pulling" the entire chat log upwards smoothly.
+            allMessages.forEach(el => {
+                el.style.transform = `translateY(-${overflow}px)`;
+            });
+        }
+    }
+}
             async function processNode(sourceNode, targetContainer) {
                 const WORD_STREAM_DELAY = 15; // Slightly slower for a more graceful feel
                 for (const child of Array.from(sourceNode.childNodes)) {
