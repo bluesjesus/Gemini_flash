@@ -5,11 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>AI Chat</title>
     
-    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
+    <!-- NEW: Using the Lexend font for a cleaner, ChatGPT-like feel -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"></noscript>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600&display=swap" rel="stylesheet">
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-light.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
@@ -25,57 +24,41 @@
             --border-color: #e5e5e5;
             --user-msg-bg: #e9e9eb;
             --ai-msg-bg: transparent; 
-           --system-font: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            /* NEW: Updated font stack */
+            --system-font: 'Lexend', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             --sidebar-width: 280px;
             --code-bg: #f0f2f5; 
             --code-text-color: #383a42;
         }
         html { scroll-behavior: smooth; }
         body, html { margin: 0; padding: 0; font-family: var(--system-font); height: 100%; width: 100%; overflow: hidden; background-color: var(--background-color); color: var(--text-color); }
-        body.is-dragging {
-    user-select: none;
-    -webkit-user-select: none;
-} #chat-messages { overflow-y: hidden; }
+        body.is-dragging { user-select: none; -webkit-user-select: none; }
+        body.is-dragging #chat-messages { overflow-y: hidden; }
+
         #app-container { display: flex; height: 100dvh; width: 100vw; position: relative; }
         #sidebar { width: var(--sidebar-width); max-width: 85vw; height: 100%; background-color: var(--sidebar-bg); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; position: fixed; left: 0; top: 0; transform: translateX(calc(-1 * var(--sidebar-width))); transition: transform 0.4s cubic-bezier(0.25, 0.1, 0.25, 1.0); z-index: 1000; will-change: transform; }
         #sidebar.no-transition { transition: none; }
         .sidebar-header { padding: 1rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
         .sidebar-header h2 { margin: 0; font-size: 1.1rem; }
-        #new-chat-btn { font-size: 1.5rem; background: none; border: none; cursor: pointer; color: var(--text-color); padding: 0.5rem;}
-        #chat-history-list {
-    flex-grow: 1;
-    overflow-y: auto;
-    padding: 0.5rem 0;
-    /* --- NEW: Disable text selection in the history list --- */
-    user-select: none;
-    -webkit-user-select: none; /* For Safari */
-}
         
-        /* --- NEW: Styles for editable chat history --- */
+        /* --- NEW: Container for sidebar header buttons --- */
+        .sidebar-header-actions { display: flex; align-items: center; gap: 0.25rem; }
+        .sidebar-action-btn { font-size: 1.5rem; background: none; border: none; cursor: pointer; color: var(--text-color); padding: 0.5rem; border-radius: 50%; }
+        .sidebar-action-btn:hover { background-color: #dcdce0; }
+
+        #chat-history-list { flex-grow: 1; overflow-y: auto; padding: 0.5rem 0; user-select: none; -webkit-user-select: none; }
+        
         .chat-history-item { position: relative; display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; cursor: pointer; border-bottom: 1px solid var(--border-color); }
         .chat-title-container { flex-grow: 1; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; padding-right: 1rem; }
         .rename-input { font: inherit; border: 1px solid var(--primary-accent); border-radius: 4px; padding: 0.2rem 0.4rem; width: 100%; box-sizing: border-box;}
-        
         .chat-actions-btn { background: none; border: none; cursor: pointer; padding: 0.25rem 0.5rem; border-radius: 4px; opacity: 0; transition: opacity 0.2s ease; line-height: 1; }
         .chat-history-item:hover .chat-actions-btn, .chat-history-item.active .chat-actions-btn { opacity: 1; }
         .chat-actions-btn svg { width: 18px; height: 18px; fill: #555; pointer-events: none; }
         .chat-actions-btn:hover { background-color: #dcdce0; }
-        .actions-dropdown {
-            position: absolute;
-            top: 2.5rem;
-            right: 1rem;
-            background-color: #fff;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            z-index: 10;
-            overflow: hidden;
-            display: none; /* Hidden by default */
-            border: 1px solid var(--border-color);
-        }
+        .actions-dropdown { position: absolute; top: 2.5rem; right: 1rem; background-color: #fff; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 10; overflow: hidden; display: none; border: 1px solid var(--border-color); }
         .actions-dropdown button { display: flex; align-items: center; gap: 0.5rem; width: 100%; padding: 0.75rem 1rem; background: none; border: none; text-align: left; cursor: pointer; font-size: 0.9rem; min-width: 120px; }
         .actions-dropdown button:hover { background-color: var(--sidebar-bg); }
         .actions-dropdown .delete-action { color: #d92d20; }
-        
         .chat-history-item.active { background-color: #dcdce0; font-weight: 500; }
         .sidebar-footer { padding: 1rem; border-top: 1px solid var(--border-color); }
         #logout-btn { width: 100%; padding: 0.5rem; background: none; color: var(--text-color); border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; font-size: 1rem; display: none; align-items: center; gap: 0.75rem; text-align: left; }
@@ -93,24 +76,15 @@
         #chat-header h1 { font-size: 1.1rem; margin: 0; }
         #chat-messages { flex-grow: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; min-height: 0; width: 100%; max-width: 800px; margin-left: auto; margin-right: auto; box-sizing: border-box; scrollbar-width: none; -ms-overflow-style: none; touch-action: pan-y; }
         #chat-messages::-webkit-scrollbar { display: none; }
-        .message-container { max-width: 85%; margin-bottom: 1rem; padding: 0.75rem 1.1rem; border-radius: 18px; line-height: 1.6; word-wrap: break-word; opacity: 0; transform: translateY(15px); animation: fadeInAndRise 0.4s ease forwards; }
+        .message-container { max-width: 85%; margin-bottom: 1rem; border-radius: 18px; line-height: 1.6; word-wrap: break-word; opacity: 0; transform: translateY(15px); animation: fadeInAndRise 0.4s ease forwards; }
+        .message-container.ai { padding: 0.75rem 1.1rem; line-height: 1.7; }
         #chat-messages.is-loading-history .message-container { animation: none; opacity: 1; transform: none; }
         @keyframes fadeInAndRise { to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeInContainerOnly { from { opacity: 0; } to { opacity: 1; } }
         .message-container p:first-child { margin-top: 0; }
         .message-container p:last-child { margin-bottom: 0; }
-        .message-container.user { background-color: var(--user-msg-bg); align-self: flex-end; border-bottom-right-radius: 4px; }
-        .message-container.ai {
-    background-color: var(--ai-msg-bg);
-    align-self: flex-start;
-    border: none;
-    /* --- NEW: Add padding to center the text slightly --- */
-    padding: 0.75rem 1.1rem; 
-    /* --- NEW: Increase line spacing for readability --- */
-    line-height: 1.7; 
-    transform: none;
-    animation: fadeInContainerOnly 0.2s ease forwards;
-}
+        .message-container.user { padding: 0.75rem 1.1rem; background-color: var(--user-msg-bg); align-self: flex-end; border-bottom-right-radius: 4px; }
+        .message-container.ai { background-color: var(--ai-msg-bg); align-self: flex-start; border: none; transform: none; animation: fadeInContainerOnly 0.2s ease forwards; }
         .message-container.ai strong, .message-container.ai b { font-weight: 600; }
         .message-container.ai h1, .message-container.ai h2, .message-container.ai h3 { margin-top: 1.2rem; margin-bottom: 0.5rem; line-height: 1.3; }
         .welcome-message { align-self: center; text-align: center; margin-top: 2rem; border: none !important; padding: 0 !important; animation: fadeInAndRise 0.4s ease forwards; }
@@ -128,8 +102,6 @@
         .code-block-wrapper:hover .copy-btn { opacity: 1; }
         .copy-btn:hover { background: #dcdce0; }
         .copy-btn:active { transform: scale(0.95); }
-        @keyframes gradientWave { from { opacity: 0; color: #aaa; transform: translateY(5px); } to { opacity: 1; color: var(--text-color); transform: translateY(0); } }
-        .word-anim { opacity: 0; display: inline-block; animation: gradientWave 0.2s ease-out forwards; }
         .thinking-indicator { display: flex; gap: 4px; align-items: center; padding: 0.75rem 1.1rem; height: 1.5rem; }
         .thinking-indicator span { width: 7px; height: 7px; background-color: var(--primary-accent); border-radius: 50%; animation: sleekWave 1.2s ease-in-out infinite; }
         .thinking-indicator span:nth-child(2) { animation-delay: 0.1s; }
@@ -142,7 +114,14 @@
     <div id="app-container">
         <div id="sidebar-overlay"></div>
         <aside id="sidebar">
-            <div class="sidebar-header"><h2>Chat History</h2><button id="new-chat-btn" title="New Chat">+</button></div>
+            <div class="sidebar-header">
+                <h2>Chat History</h2>
+                <!-- NEW: Button container with close button -->
+                <div class="sidebar-header-actions">
+                    <button id="new-chat-btn" title="New Chat" class="sidebar-action-btn">+</button>
+                    <button id="sidebar-close-btn" title="Close Menu" class="sidebar-action-btn">×</button>
+                </div>
+            </div>
             <div id="chat-history-list"></div>
             <div class="sidebar-footer">
                 <button id="logout-btn">
@@ -206,14 +185,11 @@
                 }
             }
             
-            // --- NEW: Robust rename and cancel logic ---
             function cancelAllRenames() {
                 const input = document.querySelector('.rename-input');
                 if (!input) return;
-                
                 const titleContainer = input.parentElement;
                 const originalTitle = input.dataset.originalTitle;
-                
                 if (titleContainer) {
                     titleContainer.textContent = originalTitle;
                 }
@@ -236,16 +212,11 @@
                     const newTitle = input.value.trim();
                     if (newTitle && newTitle !== originalTitle) {
                         db.ref(`chats/${currentUser.uid}/${chatId}`).update({ title: newTitle });
-                    }
-                    // The 'on value' listener will redraw the list, removing the input.
-                    // If the name is unchanged, we revert manually just in case.
-                    if (!newTitle || newTitle === originalTitle) {
-                        if (input.parentElement) {
-                           titleContainer.textContent = originalTitle;
-                        }
+                    } else {
+                        // If unchanged, manually revert the UI
+                        titleContainer.textContent = originalTitle;
                     }
                 };
-
                 input.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') input.blur();
                     if (e.key === 'Escape') {
@@ -254,7 +225,6 @@
                     }
                 });
                 input.addEventListener('blur', saveRename);
-
                 titleContainer.appendChild(input);
                 input.select();
             }
@@ -280,7 +250,7 @@
                         
                         historyItem.addEventListener('click', () => {
                             if (document.querySelector('.rename-input')) {
-                                cancelAllRenames();
+                                return; // Block loading new chat while renaming
                             }
                             loadChat(chat.id);
                         });
@@ -346,7 +316,7 @@
                     if(msg.role === 'user') {
                         el.querySelector('p').textContent = msg.text;
                     } else { 
-                        el.innerHTML = msg.text;
+                        el.innerHTML = marked.parse(msg.text);
                         el.querySelectorAll('pre').forEach(pre => {
                             const wrapper = document.createElement('div');
                             wrapper.className = 'code-block-wrapper';
@@ -401,79 +371,20 @@
                     const p = document.createElement('p');
                     p.textContent = text;
                     m.appendChild(p);
+                } else {
+                    m.innerHTML = `<div class="thinking-indicator"><span></span><span></span><span></span></div>`;
                 }
                 chatMessages.appendChild(m); 
                 chatMessages.scrollTop = chatMessages.scrollHeight; 
                 return m; 
             }
             
-            function smartScroll() {
-                const isScrolledToBottom = chatMessages.scrollHeight - chatMessages.clientHeight <= chatMessages.scrollTop + 50;
-                if (isScrolledToBottom) { chatMessages.scrollTop = chatMessages.scrollHeight; }
-            }
-            async function processNode(sourceNode, targetContainer) {
-                const WORD_STREAM_DELAY = 10;
-                for (const child of Array.from(sourceNode.childNodes)) {
-                    if (child.nodeType === Node.TEXT_NODE) {
-                        const words = child.nodeValue.split(/(\s+)/);
-                        for (const word of words) {
-                            if (word.trim().length > 0) {
-                                const span = document.createElement('span');
-                                span.className = 'word-anim';
-                                span.textContent = word;
-                                targetContainer.appendChild(span);
-                                smartScroll();
-                                await new Promise(res => setTimeout(res, WORD_STREAM_DELAY));
-                            } else { targetContainer.appendChild(document.createTextNode(word)); }
-                        }
-                    } else if (child.nodeType === Node.ELEMENT_NODE) {
-                        const newTargetElement = document.createElement(child.tagName);
-                        targetContainer.appendChild(newTargetElement);
-                        await processNode(child, newTargetElement);
-                    }
-                }
-            }
-            async function streamResponse(container, text, onComplete) {
-                const PAUSE_AFTER_BLOCK = 80;
-                marked.setOptions({
-                    highlight: (code, lang) => hljs.getLanguage(lang) ? hljs.highlight(code, { language: lang }).value : hljs.highlightAuto(code).value,
-                    langPrefix: 'hljs language-', gfm: true, breaks: true,
-                });
-                await fontsReadyPromise;
-                const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = marked.parse(text);
-                container.innerHTML = '';
-                for (const sourceNode of Array.from(tempDiv.childNodes)) {
-                    if (sourceNode.tagName?.toLowerCase() === 'pre') {
-                        const wrapper = document.createElement('div');
-                        wrapper.className = 'code-block-wrapper';
-                        const codeText = sourceNode.querySelector('code').innerText;
-                        const btn = document.createElement('button');
-                        btn.className = 'copy-btn';
-                        btn.textContent = 'Copy Code';
-                        btn.onclick = () => navigator.clipboard.writeText(codeText).then(() => { btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = 'Copy Code'; }, 2000); });
-                        wrapper.appendChild(sourceNode.cloneNode(true));
-                        wrapper.appendChild(btn);
-                        container.appendChild(wrapper);
-                        hljs.highlightElement(wrapper.querySelector('code'));
-                        smartScroll();
-                        continue;
-                    }
-                    const newBlock = document.createElement(sourceNode.tagName || 'p');
-                    container.appendChild(newBlock);
-                    await processNode(sourceNode, newBlock);
-                    await new Promise(res => setTimeout(res, PAUSE_AFTER_BLOCK));
-                }
-                if (onComplete) onComplete(container.innerHTML);
-            }
-
             async function handleSendMessage(e) {
                 e.preventDefault(); if (!currentUser) return; const userMessage = chatInput.value.trim(); if (!userMessage) return;
                 chatInput.value = ''; chatInput.style.height = 'auto';
                 addMessageToUI('user', userMessage); 
                 localChatHistory.push({ role: 'user', text: userMessage });
-                const aiMsgContainer = addMessageToUI('ai', ''); 
-                aiMsgContainer.innerHTML = `<div class="thinking-indicator"><span></span><span></span><span></span></div>`;
+                const aiMsgContainer = addMessageToUI('ai');
                 try {
                     const response = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: userMessage, history: localChatHistory.slice(0, -1) }) });
                     if (!response.ok || !response.body) throw new Error('API response error.');
@@ -485,10 +396,24 @@
                     let aiResponseText = '';
                     for (const item of responseArray) { const text = item?.candidates?.[0]?.content?.parts?.[0]?.text; if (text) aiResponseText += text; }
                     
-                    streamResponse(aiMsgContainer, aiResponseText, (finalHtml) => {
-                        localChatHistory.push({ role: 'model', text: finalHtml });
-                        saveChat();
-                    });   
+                    const finalHtml = marked.parse(aiResponseText);
+                    aiMsgContainer.innerHTML = finalHtml;
+                    aiMsgContainer.querySelectorAll('pre').forEach(pre => {
+                        const wrapper = document.createElement('div');
+                        wrapper.className = 'code-block-wrapper';
+                        pre.parentNode.insertBefore(wrapper, pre);
+                        wrapper.appendChild(pre);
+                        const codeText = pre.querySelector('code').innerText;
+                        const btn = document.createElement('button');
+                        btn.className = 'copy-btn';
+                        btn.textContent = 'Copy Code';
+                        btn.onclick = () => navigator.clipboard.writeText(codeText).then(() => { btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = 'Copy Code'; }, 2000); });
+                        wrapper.appendChild(btn);
+                        hljs.highlightElement(pre.querySelector('code'));
+                    });
+                    
+                    localChatHistory.push({ role: 'model', text: finalHtml });
+                    saveChat();
                 } catch (error) { 
                     console.error("AI Error:", error); 
                     aiMsgContainer.innerHTML = "<p>Sorry, an error occurred while getting a response.</p>"; 
@@ -502,6 +427,7 @@
             const menuToggle = document.getElementById('menu-toggle'); 
             const sidebarOverlay = document.getElementById('sidebar-overlay');
             const appContainer = document.getElementById('app-container');
+            const sidebarCloseBtn = document.getElementById('sidebar-close-btn');
             let menuToggleTimeout;
             
             document.addEventListener('click', (e) => {
@@ -524,12 +450,10 @@
                 sidebar.style.transform = `translateX(-${sidebar.offsetWidth}px)`;
                 document.body.classList.remove('sidebar-open'); 
             }; 
-            menuToggle.addEventListener('click', (e) => {
-                e.stopPropagation();
-                document.body.classList.contains('sidebar-open') ? closeSidebar() : openSidebar();
-            });
+            menuToggle.addEventListener('click', (e) => { e.stopPropagation(); openSidebar(); });
+            sidebarCloseBtn.addEventListener('click', closeSidebar);
             appContainer.addEventListener('click', (e) => {
-                const hotspotWidth = 70;
+                const hotspotWidth = 80; // Increased hotspot width
                 if (e.clientX <= hotspotWidth && !document.body.classList.contains('sidebar-open')) {
                     menuToggle.classList.add('visible');
                     clearTimeout(menuToggleTimeout);
@@ -540,82 +464,43 @@
             });
             sidebarOverlay.addEventListener('click', closeSidebar); 
             
-            // --- PASTE THIS NEW, COMPLETE BLOCK IN ITS PLACE ---
-
-let isDragging = false;
-let startX = 0, startY = 0;
-let currentTranslate = 0;
-let dragDirection = null; // Can be 'horizontal', 'vertical', or null
-
-const dragStart = (e) => {
-    const t = e.type === 'touchstart' ? e.touches[0] : e;
-    const s = document.body.classList.contains('sidebar-open');
-
-    if (s && t.target.closest('#chat-history-list')) { return; }
-
-    if (s || t.clientX < 70) {
-        isDragging = true;
-        startX = t.clientX;
-        startY = t.clientY;
-        dragDirection = null; // Reset direction on new drag
-        sidebar.classList.add('no-transition');
-        currentTranslate = s ? 0 : -sidebar.offsetWidth;
-    }
-};
-
-const dragMove = (e) => {
-    if (!isDragging) return;
-    const t = e.type === 'touchmove' ? e.touches[0] : e;
-    const deltaX = t.clientX - startX;
-    const deltaY = t.clientY - startY;
-
-    if (dragDirection === null) {
-        // Determine drag direction on the first move
-        if (Math.abs(deltaX) > Math.abs(deltaY) + 3) { // Horizontal threshold
-            dragDirection = 'horizontal';
-            document.body.classList.add('is-dragging'); // Freeze body scroll
-        } else {
-            dragDirection = 'vertical';
-        }
-    }
-
-    if (dragDirection === 'horizontal') {
-        // This is the key: prevent default browser action (scrolling)
-        // only when we are sure it's a horizontal sidebar drag.
-        e.preventDefault();
-
-        const newTranslate = currentTranslate + deltaX;
-        const s = Math.min(0, Math.max(-sidebar.offsetWidth, newTranslate));
-        sidebar.style.transform = `translateX(${s}px)`;
-        sidebarOverlay.style.opacity = 1 - (Math.abs(s) / sidebar.offsetWidth);
-    }
-    // If dragDirection is 'vertical', we do nothing and let the browser scroll normally.
-};
-
-const dragEnd = (e) => {
-    if (!isDragging) return;
-    
-    if (dragDirection === 'horizontal') {
-        const t = new DOMMatrix(getComputedStyle(sidebar).transform).m41;
-        t > -sidebar.offsetWidth / 2 ? openSidebar() : closeSidebar();
-    }
-    
-    isDragging = false;
-    dragDirection = null;
-    sidebar.classList.remove('no-transition');
-    sidebarOverlay.style.opacity = '';
-    document.body.classList.remove('is-dragging');
-};
-
-document.body.addEventListener('mousedown', dragStart);
-document.body.addEventListener('mousemove', dragMove);
-document.body.addEventListener('mouseup', dragEnd);
-document.body.addEventListener('mouseleave', dragEnd);
-
-// CRITICAL: passive must be false for preventDefault() to work.
-document.body.addEventListener('touchstart', dragStart, { passive: false });
-document.body.addEventListener('touchmove', dragMove, { passive: false });
-document.body.addEventListener('touchend', dragEnd);
+            let isDragging = false, startX = 0, currentTranslate = 0;
+            const dragStart = (e) => {
+                const t = e.type === 'touchstart' ? e.touches[0] : e;
+                const s = document.body.classList.contains('sidebar-open');
+                if (s && t.target.closest('#chat-history-list')) { return; }
+                if (s || t.clientX < 80) { // Increased hotspot width
+                    isDragging = true;
+                    startX = t.clientX;
+                    sidebar.classList.add('no-transition');
+                    currentTranslate = s ? 0 : -sidebar.offsetWidth;
+                    document.body.classList.add('is-dragging');
+                }
+            };
+            const dragMove = (e) => {
+                if (!isDragging) return;
+                const t = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
+                const n = t - startX;
+                let s = Math.min(0, Math.max(-sidebar.offsetWidth, currentTranslate + n));
+                sidebar.style.transform = `translateX(${s}px)`;
+                sidebarOverlay.style.opacity = 1 - (Math.abs(s) / sidebar.offsetWidth);
+            };
+            const dragEnd = (e) => {
+                if (!isDragging) return;
+                isDragging = false;
+                sidebar.classList.remove('no-transition');
+                sidebarOverlay.style.opacity = '';
+                document.body.classList.remove('is-dragging');
+                const t = new DOMMatrix(getComputedStyle(sidebar).transform).m41;
+                t > -sidebar.offsetWidth / 2 ? openSidebar() : closeSidebar();
+            };
+            document.body.addEventListener('mousedown', dragStart);
+            document.body.addEventListener('mousemove', dragMove);
+            document.body.addEventListener('mouseup', dragEnd);
+            document.body.addEventListener('mouseleave', dragEnd);
+            document.body.addEventListener('touchstart', dragStart, { passive: true });
+            document.body.addEventListener('touchmove', dragMove, { passive: true });
+            document.body.addEventListener('touchend', dragEnd);
         });
     </script>
 </body>
