@@ -97,12 +97,11 @@
         .code-block-wrapper { position: relative; margin: 1rem 0; }
         .message-container.ai pre { background-color: var(--code-bg); color: var(--code-text-color); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color); overflow-x: auto; font-family: 'SF Mono', 'Fira Code', 'monospace'; font-size: 0.875rem; line-height: 1.6; margin: 0; }
         .message-container.ai pre code.hljs { padding: 0; background: transparent; }
-        .copy-btn { position: absolute; top: 8px; right: 8px; background: none; border: 1px solid var(--border-color); color: #555; padding: 0.25rem 0.5rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; opacity: 0; transition: all 0.2s ease; display: flex; align-items: center; gap: 0.3rem; }
+        .copy-btn { position: absolute; top: 8px; right: 8px; background: #e9e9eb; color: #555; border: 1px solid var(--border-color); padding: 0.3rem 0.6rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem; opacity: 0; transition: opacity 0.2s ease; }
         .code-block-wrapper:hover .copy-btn { opacity: 1; }
-        .copy-btn:hover { background: #e9e9eb; border-color: #ccc; }
+        .copy-btn:hover { background: #dcdce0; }
         .copy-btn:active { transform: scale(0.95); }
         
-        /* NEW: Enhanced "Gradient Wave" Animation */
         @keyframes gradientWave {
             from { opacity: 0; color: #999; transform: translateY(5px); }
             to { opacity: 1; color: var(--text-color); transform: translateY(0); }
@@ -324,7 +323,7 @@
                             const codeText = pre.querySelector('code').innerText;
                             const btn = document.createElement('button');
                             btn.className = 'copy-btn';
-                            btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> <span>Copy</span>`;
+                            btn.innerHTML = `<span>Copy</span>`;
                             btn.onclick = () => navigator.clipboard.writeText(codeText).then(() => { btn.querySelector('span').textContent = 'Copied!'; setTimeout(() => { btn.querySelector('span').textContent = 'Copy'; }, 2000); });
                             wrapper.appendChild(btn);
                             hljs.highlightElement(pre.querySelector('code'));
@@ -378,45 +377,40 @@
             
             async function streamResponse(container, text, onComplete) {
                 const WORD_STREAM_DELAY = 15;
+                const PAUSE_AFTER_BLOCK = 100;
+
                 marked.setOptions({
                     highlight: (code, lang) => hljs.getLanguage(lang) ? hljs.highlight(code, { language: lang }).value : hljs.highlightAuto(code).value,
                     langPrefix: 'hljs language-', gfm: true, breaks: true,
                 });
                 await fontsReadyPromise;
-                
-                let tempDiv = document.createElement('div');
+                const tempDiv = document.createElement('div');
                 tempDiv.innerHTML = marked.parse(text);
-
-                container.innerHTML = ''; // Clear "thinking" indicator
                 
                 let wordCount = 0;
-                const elementsToAnimate = [];
-
-                tempDiv.querySelectorAll('p, li, h1, h2, h3, h4, h5, h6').forEach(block => {
+                tempDiv.querySelectorAll('p, li, h1, h2, h3').forEach(block => {
                     const words = block.innerText.split(/\s+/).filter(Boolean);
-                    const newBlock = document.createElement(block.tagName);
-                    container.appendChild(newBlock);
-                    
                     let htmlContent = block.innerHTML;
                     words.forEach(word => {
-                        htmlContent = htmlContent.replace(word, `<span class="word-anim" style="animation-delay: ${wordCount * 0.02}s">${word}</span>`);
+                        const regex = new RegExp(`\\b${word.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}\\b`);
+                        htmlContent = htmlContent.replace(regex, `<span class="word-anim" style="animation-delay: ${wordCount * 0.02}s">${word}</span>`);
                         wordCount++;
                     });
-                    newBlock.innerHTML = htmlContent;
-                    elementsToAnimate.push(newBlock);
+                    block.innerHTML = htmlContent;
                 });
 
-                tempDiv.querySelectorAll('pre').forEach(pre => {
+                container.innerHTML = tempDiv.innerHTML;
+                container.querySelectorAll('pre').forEach(pre => {
                     const wrapper = document.createElement('div');
                     wrapper.className = 'code-block-wrapper';
+                    pre.parentNode.insertBefore(wrapper, pre);
+                    wrapper.appendChild(pre);
                     const codeText = pre.querySelector('code').innerText;
                     const btn = document.createElement('button');
                     btn.className = 'copy-btn';
-                    btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> <span>Copy</span>`;
+                    btn.innerHTML = `<span>Copy</span>`;
                     btn.onclick = () => navigator.clipboard.writeText(codeText).then(() => { btn.querySelector('span').textContent = 'Copied!'; setTimeout(() => { btn.querySelector('span').textContent = 'Copy'; }, 2000); });
-                    wrapper.appendChild(pre);
                     wrapper.appendChild(btn);
-                    container.appendChild(wrapper);
                     hljs.highlightElement(pre.querySelector('code'));
                 });
 
@@ -433,7 +427,7 @@
                 addMessageToUI('user', userMessage); 
                 localChatHistory.push({ role: 'user', text: userMessage });
                 const aiMsgContainer = addMessageToUI('ai'); 
-                
+                aiMsgContainer.innerHTML = `<div class="thinking-indicator"><span></span><span></span><span></span></div>`;
                 try {
                     const response = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: userMessage, history: localChatHistory.slice(0, -1) }) });
                     if (!response.ok || !response.body) throw new Error('API response error.');
@@ -475,8 +469,8 @@
                 }
             });
 
-            const openSidebar = () => { /* ... (function unchanged) ... */ };
-            const closeSidebar = () => { /* ... (function unchanged) ... */ }; 
+            const openSidebar = () => { /* ... */ };
+            const closeSidebar = () => { /* ... */ }; 
             menuToggle.addEventListener('click', (e) => { e.stopPropagation(); openSidebar(); });
             sidebarCloseBtn.addEventListener('click', closeSidebar);
             appContainer.addEventListener('click', (e) => {
