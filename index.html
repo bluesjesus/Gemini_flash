@@ -393,13 +393,19 @@
                     let htmlContent = block.innerHTML;
                     words.forEach(word => {
                         const regex = new RegExp(`\\b${word.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}\\b`);
-                        htmlContent = htmlContent.replace(regex, `<span class="word-anim" style="animation-delay: ${wordCount * 0.02}s">${word}</span>`);
+                        let replaced = false;
+                        htmlContent = htmlContent.replace(regex, (match) => {
+                            if (replaced) return match;
+                            replaced = true;
+                            return `<span class="word-anim" style="animation-delay: ${wordCount * 0.02}s">${match}</span>`;
+                        });
                         wordCount++;
                     });
                     block.innerHTML = htmlContent;
                 });
-
+                
                 container.innerHTML = tempDiv.innerHTML;
+                
                 container.querySelectorAll('pre').forEach(pre => {
                     const wrapper = document.createElement('div');
                     wrapper.className = 'code-block-wrapper';
@@ -469,8 +475,8 @@
                 }
             });
 
-            const openSidebar = () => { /* ... */ };
-            const closeSidebar = () => { /* ... */ }; 
+            const openSidebar = () => { /* ... (unchanged) ... */ };
+            const closeSidebar = () => { /* ... (unchanged) ... */ }; 
             menuToggle.addEventListener('click', (e) => { e.stopPropagation(); openSidebar(); });
             sidebarCloseBtn.addEventListener('click', closeSidebar);
             appContainer.addEventListener('click', (e) => {
