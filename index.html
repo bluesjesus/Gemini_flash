@@ -117,6 +117,32 @@
         .thinking-indicator span:nth-child(2) { animation-delay: 0.1s; }
         .thinking-indicator span:nth-child(3) { animation-delay: 0.2s; }
         @keyframes sleekWave { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+        /* --- PASTE THIS ENTIRE BLOCK AT THE END OF YOUR CSS --- */
+
+/* Desktop and wide-screen layout adjustments */
+@media (min-width: 769px) {
+    /* Make the sidebar permanently visible */
+    #sidebar {
+        transform: translateX(0);
+        transition: none; /* No sliding animation on desktop */
+    }
+
+    /* Push the main chat area to the right to make space */
+    #chat-area {
+        margin-left: var(--sidebar-width);
+    }
+
+    /* Hide mobile-only UI elements */
+    #menu-toggle, #sidebar-close-btn, #sidebar-overlay {
+        display: none !important;
+    }
+
+    /* Disable all mobile drag functionality on desktop */
+    body.is-dragging {
+        user-select: auto; /* Re-enable text selection */
+        -webkit-user-select: auto;
+    }
+}
     </style>
 </head>
 <body>
