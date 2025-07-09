@@ -385,39 +385,41 @@
                 return m; 
             }
             
-            // --- REPLACE THE OLD smartScroll WITH THIS NEW VERSION ---
-            function smartScroll(element) {
-            const isScrolledToBottom = chatMessages.scrollHeight - chatMessages.clientHeight <= chatMessages.scrollTop + 50;
-    
-            // Only scroll if the user is already near the bottom AND we have an element to scroll to.
-                if (isScrolledToBottom && element) {
-                        // This is the magic: it tells the browser to smoothly scroll just enough
-                // to make sure the bottom of the element is visible.
-                element.scrollIntoView({ behavior: 'smooth', block: 'end', inline: 'nearest' });
+           // --- REPLACE THE OLD JAVASCRIPT WITH THIS NEW, CORRECTED BLOCK ---
+
+function smartScroll() {
+    const isScrolledToBottom = chatMessages.scrollHeight - chatMessages.clientHeight <= chatMessages.scrollTop + 100; // Increased buffer
+
+    if (isScrolledToBottom) {
+        // This is the key: we tell the browser to smoothly scroll to its maximum scroll height.
+        // The `scroll-behavior: smooth;` in your CSS will handle the animation.
+        chatMessages.scrollTo({ top: chatMessages.scrollHeight, behavior: 'smooth' });
+    }
+}
+
+async function processNode(sourceNode, targetContainer) {
+    const WORD_STREAM_DELAY = 15;
+    for (const child of Array.from(sourceNode.childNodes)) {
+        if (child.nodeType === Node.TEXT_NODE) {
+            const words = child.nodeValue.split(/(\s+)/);
+            for (const word of words) {
+                if (word.trim().length > 0) {
+                    const span = document.createElement('span');
+                    span.className = 'word-anim';
+                    span.textContent = word;
+                    targetContainer.appendChild(span);
+                    // We no longer pass the element, just call the function
+                    smartScroll(); 
+                    await new Promise(res => setTimeout(res, WORD_STREAM_DELAY));
+                } else { targetContainer.appendChild(document.createTextNode(word)); }
             }
+        } else if (child.nodeType === Node.ELEMENT_NODE) {
+            const newTargetElement = document.createElement(child.tagName);
+            targetContainer.appendChild(newTargetElement);
+            await processNode(child, newTargetElement);
         }
-            async function processNode(sourceNode, targetContainer) {
-                const WORD_STREAM_DELAY = 15;
-                for (const child of Array.from(sourceNode.childNodes)) {
-                    if (child.nodeType === Node.TEXT_NODE) {
-                        const words = child.nodeValue.split(/(\s+)/);
-                        for (const word of words) {
-                            if (word.trim().length > 0) {
-                                const span = document.createElement('span');
-                                span.className = 'word-anim';
-                                span.textContent = word;
-                                targetContainer.appendChild(span);
-                                smartScroll(span);
-                                await new Promise(res => setTimeout(res, WORD_STREAM_DELAY));
-                            } else { targetContainer.appendChild(document.createTextNode(word)); }
-                        }
-                    } else if (child.nodeType === Node.ELEMENT_NODE) {
-                        const newTargetElement = document.createElement(child.tagName);
-                        targetContainer.appendChild(newTargetElement);
-                        await processNode(child, newTargetElement);
-                    }
-                }
-            }
+    }
+}
             async function streamResponse(container, text, onComplete) {
                 const PAUSE_AFTER_BLOCK = 80;
                 marked.setOptions({
