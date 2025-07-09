@@ -1,7 +1,3 @@
-import re
-
-# The user provided the file content directly in the prompt.
-html_content = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -606,18 +602,4 @@ html_content = """
     </script>
 </body>
 </html>
-"""
 
-# 1. Remove the desktop-specific media query block
-# This regex finds the entire block, accounting for whitespace and newlines.
-media_query_pattern = re.compile(r'@media \(min-width: 1024px\) {[^}]+}', re.DOTALL)
-modified_html = media_query_pattern.sub('', html_content)
-
-# 2. Adjust the max-width for the chat messages container
-modified_html = modified_html.replace('max-width: 800px;', 'max-width: 900px;')
-
-# Save the modified content to a new file to be returned to the user.
-with open("modified_chat_interface.html", "w", encoding="utf-8") as f:
-    f.write(modified_html)
-
-print("Modifications complete. The updated HTML is saved to 'modified_chat_interface.html'.")
