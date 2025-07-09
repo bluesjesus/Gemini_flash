@@ -441,7 +441,7 @@
                         wrapper.appendChild(btn);
                         container.appendChild(wrapper);
                         hljs.highlightElement(wrapper.querySelector('code'));
-                        smartScroll(span);
+                        smartScroll();
                         continue;
                     }
                     const newBlock = document.createElement(sourceNode.tagName || 'p');
