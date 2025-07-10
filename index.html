@@ -108,20 +108,15 @@
         .copy-btn:hover { background: #dcdce0; }
         .copy-btn:active { transform: scale(0.95); }
         
-        @keyframes gradientWave {
-            from {
-                opacity: 0;
-                transform: translateY(4px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        /* --- NEW: Hyper-fast, eye-pleasing animation --- */
+        @keyframes fastFadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
         .word-anim {
             opacity: 0; 
             display: inline-block;
-            animation: gradientWave 0.3s cubic-bezier(0.215, 0.610, 0.355, 1.000) forwards;
+            animation: fastFadeIn 0.25s ease-out forwards;
         }
 
         .thinking-indicator { display: flex; gap: 4px; align-items: center; padding: 0.75rem 1.1rem; height: 1.5rem; }
@@ -413,15 +408,9 @@
                 return m; 
             }
             
-            function smartScroll() {
-                const isScrolledToBottom = chatMessages.scrollHeight - chatMessages.clientHeight <= chatMessages.scrollTop + 100;
-                if (isScrolledToBottom) {
-                    chatMessages.scrollTo({ top: chatMessages.scrollHeight, behavior: 'smooth' });
-                }
-            }
-           
             async function processNode(sourceNode, targetContainer, streamId) {
-                const WORD_STREAM_DELAY = 3; 
+                // SPEED CONTROL: Lower is faster. 1 is hyper-fast.
+                const WORD_STREAM_DELAY = 1; 
 
                 for (const child of Array.from(sourceNode.childNodes)) {
                     if (currentStreamId !== streamId) return; 
@@ -434,7 +423,6 @@
                                 span.className = 'word-anim';
                                 span.textContent = word;
                                 targetContainer.appendChild(span);
-                                smartScroll(); 
                                 await new Promise(res => setTimeout(res, WORD_STREAM_DELAY));
                             } else { 
                                 targetContainer.appendChild(document.createTextNode(word)); 
@@ -452,19 +440,17 @@
                 const streamId = Date.now(); 
                 currentStreamId = streamId; 
 
-                const PAUSE_AFTER_BLOCK = 20;
+                const PAUSE_AFTER_BLOCK = 10;
                 marked.setOptions({
                     highlight: (code, lang) => hljs.getLanguage(lang) ? hljs.highlight(code, { language: lang }).value : hljs.highlightAuto(code).value,
                     langPrefix: 'hljs language-', gfm: true, breaks: true,
                 });
                 
-                // OPTIMIZATION: Parse the markdown just once.
                 const tempDiv = document.createElement('div');
                 tempDiv.innerHTML = marked.parse(text);
                 
                 container.innerHTML = '';
                 
-                // OPTIMIZATION: Use requestAnimationFrame to start the stream.
                 requestAnimationFrame(async () => {
                     await fontsReadyPromise;
                     for (const sourceNode of Array.from(tempDiv.childNodes)) {
@@ -481,7 +467,6 @@
                             wrapper.appendChild(btn);
                             container.appendChild(wrapper);
                             hljs.highlightElement(wrapper.querySelector('code'));
-                            smartScroll();
                             continue;
                         }
                         const newBlock = document.createElement(sourceNode.tagName || 'p');
