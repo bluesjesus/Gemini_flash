@@ -108,14 +108,25 @@
         .copy-btn:hover { background: #dcdce0; }
         .copy-btn:active { transform: scale(0.95); }
         
+        /* --- NEW: Refined "Magic Flow" Animation --- */
         @keyframes gradientWave {
-            from { opacity: 0; color: #999; transform: translateY(5px); }
-            to { opacity: 1; color: var(--text-color); transform: translateY(0); }
+            from {
+                opacity: 0;
+                color: #aaa;
+                transform: translateY(3px) scale(0.98);
+                filter: blur(1px);
+            }
+            to {
+                opacity: 1;
+                color: var(--text-color);
+                transform: translateY(0) scale(1);
+                filter: blur(0);
+            }
         }
         .word-anim {
-            opacity: 0;
+            opacity: 0; /* Start hidden, animation will make it visible */
             display: inline-block;
-            animation: gradientWave 0.25s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+            animation: gradientWave 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
         }
 
         .thinking-indicator { display: flex; gap: 4px; align-items: center; padding: 0.75rem 1.1rem; height: 1.5rem; }
@@ -404,8 +415,8 @@
                 return m; 
             }
             
-            function processNodeToFragment(sourceNode) {
-                const fragment = document.createDocumentFragment();
+            async function processNode(sourceNode, targetContainer) {
+                const WORD_STREAM_DELAY = 5;
                 for (const child of Array.from(sourceNode.childNodes)) {
                     if (child.nodeType === Node.TEXT_NODE) {
                         const words = child.nodeValue.split(/(\s+)/);
@@ -414,24 +425,19 @@
                                 const span = document.createElement('span');
                                 span.className = 'word-anim';
                                 span.textContent = word;
-                                fragment.appendChild(span);
-                            } else {
-                                fragment.appendChild(document.createTextNode(word));
-                            }
+                                targetContainer.appendChild(span);
+                                await new Promise(res => setTimeout(res, WORD_STREAM_DELAY));
+                            } else { targetContainer.appendChild(document.createTextNode(word)); }
                         }
                     } else if (child.nodeType === Node.ELEMENT_NODE) {
                         const newTargetElement = document.createElement(child.tagName);
-                        newTargetElement.appendChild(processNodeToFragment(child));
-                        fragment.appendChild(newTargetElement);
+                        targetContainer.appendChild(newTargetElement);
+                        await processNode(child, newTargetElement);
                     }
                 }
-                return fragment;
             }
-
             async function streamResponse(container, text, onComplete) {
-                const WORD_ANIMATION_STAGGER = 20; // ms between each word appearing
-                const PAUSE_AFTER_BLOCK = 50; // ms pause between paragraphs
-
+                const PAUSE_AFTER_BLOCK = 25;
                 marked.setOptions({
                     highlight: (code, lang) => hljs.getLanguage(lang) ? hljs.highlight(code, { language: lang }).value : hljs.highlightAuto(code).value,
                     langPrefix: 'hljs language-', gfm: true, breaks: true,
@@ -440,7 +446,6 @@
                 const tempDiv = document.createElement('div');
                 tempDiv.innerHTML = marked.parse(text);
                 container.innerHTML = '';
-                
                 for (const sourceNode of Array.from(tempDiv.childNodes)) {
                     if (sourceNode.tagName?.toLowerCase() === 'pre') {
                         const wrapper = document.createElement('div');
@@ -456,17 +461,9 @@
                         hljs.highlightElement(wrapper.querySelector('code'));
                         continue;
                     }
-
                     const newBlock = document.createElement(sourceNode.tagName || 'p');
-                    const fragment = processNodeToFragment(sourceNode);
-                    newBlock.appendChild(fragment);
                     container.appendChild(newBlock);
-
-                    const wordsInBlock = newBlock.querySelectorAll('.word-anim');
-                    wordsInBlock.forEach((span, i) => {
-                        span.style.animationDelay = `${i * WORD_ANIMATION_STAGGER}ms`;
-                    });
-                    
+                    await processNode(sourceNode, newBlock);
                     await new Promise(res => setTimeout(res, PAUSE_AFTER_BLOCK));
                 }
                 if (onComplete) onComplete(container.innerHTML);
