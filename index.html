@@ -115,7 +115,7 @@
         .word-anim {
             opacity: 0;
             display: inline-block;
-            animation: gradientWave 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+            animation: gradientWave 0.25s cubic-bezier(0.22, 1, 0.36, 1) forwards;
         }
 
         .thinking-indicator { display: flex; gap: 4px; align-items: center; padding: 0.75rem 1.1rem; height: 1.5rem; }
@@ -127,31 +127,22 @@
         /* --- NEW: Show a styled scrollbar on desktop --- */
         @media (min-width: 1024px) {
             #chat-messages {
-                /* Re-enables the scrollbar for Firefox/Standard browsers */
                 scrollbar-width: auto;
             }
-
-            /* --- Style the scrollbar for Chrome, Safari, and Edge --- */
             #chat-messages::-webkit-scrollbar {
-                display: block; /* Ensure it's not hidden */
-                width: 8px; /* How wide the scrollbar is */
+                display: block;
+                width: 8px;
             }
-
-            /* The "track" or the channel the scrollbar sits in */
             #chat-messages::-webkit-scrollbar-track {
-                background: transparent; /* Make the track invisible */
+                background: transparent;
             }
-
-            /* The draggable handle of the scrollbar */
             #chat-messages::-webkit-scrollbar-thumb {
-                background-color: #ccc;    /* A nice, soft grey color */
-                border-radius: 10px;       /* Rounded corners */
-                border: 2px solid var(--background-color); /* Creates padding around the thumb */
+                background-color: #ccc;
+                border-radius: 10px;
+                border: 2px solid var(--background-color);
             }
-
-            /* The handle when you hover over it */
             #chat-messages::-webkit-scrollbar-thumb:hover {
-                background-color: #aaa; /* Make it a bit darker on hover */
+                background-color: #aaa;
             }
         }
     </style>
@@ -413,8 +404,8 @@
                 return m; 
             }
             
-            async function processNode(sourceNode, targetContainer) {
-                const WORD_STREAM_DELAY = 5;
+            function processNodeToFragment(sourceNode) {
+                const fragment = document.createDocumentFragment();
                 for (const child of Array.from(sourceNode.childNodes)) {
                     if (child.nodeType === Node.TEXT_NODE) {
                         const words = child.nodeValue.split(/(\s+)/);
@@ -423,19 +414,24 @@
                                 const span = document.createElement('span');
                                 span.className = 'word-anim';
                                 span.textContent = word;
-                                targetContainer.appendChild(span);
-                                await new Promise(res => setTimeout(res, WORD_STREAM_DELAY));
-                            } else { targetContainer.appendChild(document.createTextNode(word)); }
+                                fragment.appendChild(span);
+                            } else {
+                                fragment.appendChild(document.createTextNode(word));
+                            }
                         }
                     } else if (child.nodeType === Node.ELEMENT_NODE) {
                         const newTargetElement = document.createElement(child.tagName);
-                        targetContainer.appendChild(newTargetElement);
-                        await processNode(child, newTargetElement);
+                        newTargetElement.appendChild(processNodeToFragment(child));
+                        fragment.appendChild(newTargetElement);
                     }
                 }
+                return fragment;
             }
+
             async function streamResponse(container, text, onComplete) {
-                const PAUSE_AFTER_BLOCK = 25;
+                const WORD_ANIMATION_STAGGER = 20; // ms between each word appearing
+                const PAUSE_AFTER_BLOCK = 50; // ms pause between paragraphs
+
                 marked.setOptions({
                     highlight: (code, lang) => hljs.getLanguage(lang) ? hljs.highlight(code, { language: lang }).value : hljs.highlightAuto(code).value,
                     langPrefix: 'hljs language-', gfm: true, breaks: true,
@@ -444,6 +440,7 @@
                 const tempDiv = document.createElement('div');
                 tempDiv.innerHTML = marked.parse(text);
                 container.innerHTML = '';
+                
                 for (const sourceNode of Array.from(tempDiv.childNodes)) {
                     if (sourceNode.tagName?.toLowerCase() === 'pre') {
                         const wrapper = document.createElement('div');
@@ -459,9 +456,17 @@
                         hljs.highlightElement(wrapper.querySelector('code'));
                         continue;
                     }
+
                     const newBlock = document.createElement(sourceNode.tagName || 'p');
+                    const fragment = processNodeToFragment(sourceNode);
+                    newBlock.appendChild(fragment);
                     container.appendChild(newBlock);
-                    await processNode(sourceNode, newBlock);
+
+                    const wordsInBlock = newBlock.querySelectorAll('.word-anim');
+                    wordsInBlock.forEach((span, i) => {
+                        span.style.animationDelay = `${i * WORD_ANIMATION_STAGGER}ms`;
+                    });
+                    
                     await new Promise(res => setTimeout(res, PAUSE_AFTER_BLOCK));
                 }
                 if (onComplete) onComplete(container.innerHTML);
