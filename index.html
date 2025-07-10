@@ -79,7 +79,7 @@
         #menu-toggle:hover { background: #fff; transform: scale(1.05); }
         #chat-header { padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; background: var(--background-color); z-index: 10; }
         #chat-header h1 { font-size: 1.1rem; margin: 0; }
-        #chat-messages { flex-grow: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; min-height: 0; width: 100%; max-width: 800px; margin-left: auto; margin-right: auto; box-sizing: border-box; scrollbar-width: none; -ms-overflow-style: none; touch-action: pan-y; scroll-behavior: smooth; }
+        #chat-messages { flex-grow: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; min-height: 0; width: 100%; max-width: 1120px; margin-left: auto; margin-right: auto; box-sizing: border-box; scrollbar-width: none; -ms-overflow-style: none; touch-action: pan-y; scroll-behavior: smooth; }
         #chat-messages::-webkit-scrollbar { display: none; }
         .message-container { max-width: 85%; margin-bottom: 1rem; border-radius: 18px; line-height: 1.7; /* Increased line height */ word-wrap: break-word; opacity: 0; transform: translateY(15px); animation: fadeInAndRise 0.4s ease forwards; }
         .message-container.ai { padding: 0.75rem 1.1rem; }
@@ -124,19 +124,7 @@
         .thinking-indicator span:nth-child(3) { animation-delay: 0.2s; }
         @keyframes sleekWave { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
         
-        /* --- NEW: Polished Desktop Layout --- */
-        @media (min-width: 1024px) {
-            #sidebar {
-                transform: translateX(0);
-                transition: none;
-            }
-            #chat-area {
-                margin-left: var(--sidebar-width);
-            }
-            #menu-toggle, #sidebar-close-btn, #sidebar-overlay {
-                display: none !important;
-            }
-        }
+       
     </style>
 </head>
 <body>
