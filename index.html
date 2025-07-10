@@ -372,24 +372,44 @@
                 closeSidebar();
             }
             function saveChat() {
-                if (!currentUser || localChatHistory.length < 2) return;
-                const userChatsRef = db.ref(`chats/${currentUser.uid}`);
-                const chatData = { 
-                    messages: localChatHistory, 
-                    timestamp: firebase.database.ServerValue.TIMESTAMP 
-                };
-                
-                if (!currentChatId) {
-                    chatData.title = localChatHistory[0].text.substring(0, 35);
-                    const newChatRef = userChatsRef.push(chatData); 
-                    currentChatId = newChatRef.key;
-                } else {
-                    userChatsRef.child(currentChatId).update({
-                        messages: chatData.messages,
-                        timestamp: chatData.timestamp
-                    }); 
-                }
-            }
+    if (!currentUser || localChatHistory.length < 2) return;
+
+    // --- NEW: Create a "baked" version of the history for saving ---
+    const historyToSave = localChatHistory.map(msg => {
+        if (msg.role === 'model') {
+            // Create a temporary, off-screen element
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = msg.text;
+            
+            // Remove all animation spans, leaving only the plain text
+            tempDiv.querySelectorAll('.word-anim').forEach(span => {
+                span.replaceWith(span.textContent);
+            });
+
+            // Return a new message object with the cleaned, static HTML
+            return { ...msg, text: tempDiv.innerHTML };
+        }
+        // User messages are unchanged
+        return msg;
+    });
+    // --- End of new logic ---
+
+    const userChatsRef = db.ref(`chats/${currentUser.uid}`);
+    const chatData = { 
+        // Use the new, "baked" history for the database
+        messages: historyToSave, 
+        timestamp: firebase.database.ServerValue.TIMESTAMP 
+    };
+    
+    if (!currentChatId) {
+        // Use the original history to get the title, as it's cleaner
+        chatData.title = localChatHistory[0].text.substring(0, 35);
+        const newChatRef = userChatsRef.push(chatData); 
+        currentChatId = newChatRef.key;
+    } else {
+        userChatsRef.child(currentChatId).update(chatData); 
+    }
+}
             document.getElementById('new-chat-btn').addEventListener('click', startNewChat);
             function startNewChat() {
                 currentStreamId = null; 
