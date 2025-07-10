@@ -457,7 +457,7 @@
                 const streamId = Date.now(); // Create a unique ID for this stream
                 currentStreamId = streamId; // Set it as the active stream
 
-                const PAUSE_AFTER_BLOCK = 18;
+                const PAUSE_AFTER_BLOCK = 20;
                 marked.setOptions({
                     highlight: (code, lang) => hljs.getLanguage(lang) ? hljs.highlight(code, { language: lang }).value : hljs.highlightAuto(code).value,
                     langPrefix: 'hljs language-', gfm: true, breaks: true,
@@ -630,3 +630,4 @@
     </script>
 </body>
 </html>
+And how to make the code blocks appear as they are, without being streamed, but the text before and after them should be streamed as before, and the copy button should appear as well
