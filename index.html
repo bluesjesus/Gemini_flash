@@ -507,9 +507,13 @@
                         await processNode(sourceNode, newBlock, streamId);
                         await new Promise(res => setTimeout(res, PAUSE_AFTER_BLOCK));
                     }
-                    if (currentStreamId === streamId && onComplete) {
-                        onComplete(container.innerHTML);
-                    }
+                    .
+                if (currentStreamId === streamId && onComplete) {
+                    onComplete(container.innerHTML);
+                }
+                
+                if (currentStreamId !== streamId) { saveChat(); }
+            }
                 });
             }
 
