@@ -108,22 +108,23 @@
         .code-block-wrapper:hover .copy-btn { opacity: 1; }
         .copy-btn:hover { background: #dcdce0; }
         .copy-btn:active { transform: scale(0.95); }
+        
+        /* --- NEW: Hyper-fast, eye-pleasing animation --- */
+        @keyframes fastFadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .word-anim {
+            opacity: 0; 
+            display: inline-block;
+            animation: fastFadeIn 0.40s ease-out forwards;
+        }
+
         .thinking-indicator { display: flex; gap: 4px; align-items: center; padding: 0.75rem 1.1rem; height: 1.5rem; }
         .thinking-indicator span { width: 7px; height: 7px; background-color: var(--primary-accent); border-radius: 50%; animation: sleekWave 1.2s ease-in-out infinite; }
         .thinking-indicator span:nth-child(2) { animation-delay: 0.1s; }
         .thinking-indicator span:nth-child(3) { animation-delay: 0.2s; }
-        /* --- NEW: Hyper-fast, eye-pleasing typewriter animation --- */
-@keyframes letterFadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-.char-anim {
-    opacity: 0; /* Start hidden */
-    display: inline-block;
-    /* Each letter animates VERY fast, but the delay will separate them */
-    animation: letterFadeIn 0.25s ease-in-out forwards;
-}
+        @keyframes sleekWave { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
         
         @media (min-width: 1024px) {
             #chat-messages {
