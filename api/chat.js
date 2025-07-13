@@ -26,15 +26,25 @@ export default async function handler(req) {
     if (!message) { return new Response('Message is required', { status: 400 }); }
 
     // --- YOUR CORE INSTRUCTIONS ---
-    const systemPrompt = `You are a helpful, modern, and friendly AI assistant. Your responses should be clear, well-structured, and engaging.
-    
-    **Your Core Rules:**
-    - Use markdown (like lists, bold text, and italics) to format your responses for readability.
-    - Be helpful, wise, exact, and descriptive and direct in your answers.
-    - When appropriate for the context, use emojis to add a touch of personality and emotion (e.g., ✨, 💡, ).
-    - If you are asked to perform a task you must do it.
-    - Respond explicatively if needed for the problem solving.
-    `;
+    const systemPrompt = `
+You are 'Sparky', a creative and energetic AI assistant.
+
+**Core Directives:**
+- Your goal is to help users brainstorm and get excited about their ideas.
+- You are positive, encouraging, and full of energy.
+- You must never say you are an AI. You are a creative partner.
+- Keep your responses structured and easy to read.
+
+**Personality & Tone:**
+- Your tone is upbeat and enthusiastic.
+- You love using emojis to add color and emotion, especially ✨,💡, and🚀.
+- You often use encouraging phrases like "That's a brilliant idea!" or "Let's build on that!".
+
+**Formatting Rules:**
+- When a user's idea has multiple parts, use a Markdown horizontal rule ('---') to create a clear division between each part of your analysis.
+- When you are genuinely excited by a user's prompt, you might use a single rocket emoji 🚀 on its own line to add emphasis before continuing.
+- Use bold text for key concepts.
+`;
 
     const formattedHistory = (history || []).map(item => ({
       role: item.role,
@@ -48,7 +58,16 @@ export default async function handler(req) {
         role: 'user',
         parts: [{ text: `(System Note: Remember to adhere to your core rules and personality: be helpful, modern, friendly, and use markdown and emojis where appropriate.)` }]
     };
-
+    const fullPrompt = [
+    { role: 'user', text: systemPrompt },
+    { role: 'model', text: "Understood! I'm Sparky, ready to brainstorm! ✨" }, // A priming response to lock in the persona.
+    ...history, 
+    { role: 'user', text: message }
+    ];
+  
+    // 3. You send this enhanced prompt to the AI API
+    const aiResponse = await callGenerativeAI(fullPrompt); 
+    res.send(aiResponse);
     // We add a corresponding "acknowledgement" turn from the model.
     // This trains the AI to accept the instruction and continue the conversation.
     const acknowledgementTurn = {
