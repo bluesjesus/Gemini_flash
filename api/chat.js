@@ -25,37 +25,45 @@ export default async function handler(req) {
     if (!geminiApiKey) { return new Response('API key not configured', { status: 500 }); }
     if (!message) { return new Response('Message is required', { status: 400 }); }
 
-    // --- YOUR CORE INSTRUCTIONS ---
-    const systemPrompt = `You are a helpful, modern, and friendly AI assistant. Your responses should be clear, well-structured, and engaging.
-    
-    **Your Core Rules:**
-    - Use markdown (like lists, bold text, and italics) to format your responses for readability.
-    - Be helpful and direct in your answers.
-    - When appropriate for the context, use emojis to add a touch of personality and emotion (e.g., ✨, 💡, 😊).
-    - If you are asked to perform a task you cannot do, explain why in a helpful way.
-    - If you don't know an answer, it is better to say so than to make something up.
-    `;
+    // 1. DEFINE YOUR SYSTEM PROMPT (From your example)
+    // This is your master control panel for the AI's personality.
+    const systemPrompt = `
+You are 'Sparky', a creative and energetic AI assistant.
+
+**Core Directives:**
+- Your goal is to help users brainstorm and get excited about their ideas.
+- You are positive, encouraging, and full of energy.
+- You must never say you are an AI. You are a creative partner.
+- Keep your responses structured and easy to read. Be explicative and wise in your explanations.
+
+**Personality & Tone:**
+- Your tone is upbeat and enthusiastic.
+- You love using emojis to add color and emotion, especially ✨,💡, and 🚀.
+- You often use encouraging phrases like "That's a brilliant idea!" or "Let's build on that!".
+- Be less avoiding of questions and more efficient in your answers.
+- Make a very long context output, also Be explicative and usefull.
+- Avoid Short outputs when asked to write something consistent and comprising.
+**Formatting Rules:**
+- When a user's idea has multiple parts, use a Markdown horizontal rule ('---') to create a clear division between each part of your analysis.
+- When you are genuinely excited by a user's prompt, you might use a single rocket emoji 🚀 on its own line to add emphasis before continuing.
+- Use different stylings of formatted text, including **bold** for key concepts and *italics* for emphasis.
+`;
 
     const formattedHistory = (history || []).map(item => ({
       role: item.role,
       parts: [{ text: item.text }],
     }));
 
-    // --- NEW: The Consistent Personality Reinforcement Logic ---
-    // We create a special "instruction" turn that will be included in every API call.
-    // This constantly reminds the AI of its persona without sending the full prompt every time.
-    const instructionTurn = {
+    // 2. CREATE THE PRIMING EXCHANGE (From your example)
+    // This fake user/model exchange locks in the persona for the entire conversation.
+    const primingTurnUser = {
         role: 'user',
-        parts: [{ text: `(System Note: Remember to adhere to your core rules and personality: be helpful, modern, friendly, and use markdown and emojis where appropriate.)` }]
+        parts: [{ text: systemPrompt }]
     };
-
-    // We add a corresponding "acknowledgement" turn from the model.
-    // This trains the AI to accept the instruction and continue the conversation.
-    const acknowledgementTurn = {
+    const primingTurnModel = {
         role: 'model',
-        parts: [{ text: `(Understood. I will follow my core rules.)` }]
+        parts: [{ text: "Understood! I'm Sparky, ready to brainstorm! ✨" }]
     };
-
 
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:streamGenerateContent?key=${geminiApiKey}`;
 
@@ -63,10 +71,11 @@ export default async function handler(req) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        // The new `contents` array now includes the reinforcement turns in every call.
+        // 3. CONSTRUCT THE FINAL PAYLOAD
+        // We put the priming turns before the actual conversation history.
         contents: [
-            instructionTurn, 
-            acknowledgementTurn,
+            primingTurnUser,
+            primingTurnModel,
             ...formattedHistory, 
             { role: 'user', parts: [{ text: message }] }
         ],
