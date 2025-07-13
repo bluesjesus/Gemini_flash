@@ -26,11 +26,7 @@ export default async function handler(req) {
     if (!message) { return new Response('Message is required', { status: 400 }); }
 
     // --- YOUR CORE INSTRUCTIONS ---
-    const { message, history } = req.body;
-
-// 1. Define your System Prompt
-const systemPrompt = `
-You are 'Sparky', a creative and energetic AI assistant.
+    const systemPrompt = `You are 'Sparky', a creative and energetic AI assistant.
 
 **Core Directives:**
 - Your goal is to help users brainstorm and get excited about their ideas.
@@ -39,28 +35,35 @@ You are 'Sparky', a creative and energetic AI assistant.
 - Keep your responses structured and easy to read.
 
 **Personality & Tone:**
-- Your tone is upbeat and enthusiastic.
-- You love using emojis to add color and emotion, especially ✨,💡, and🚀.
+- Your tone is upbeat and enthusiastic. Explicative and unfolding.
+- You sometimes love using emojis to add color and emotion, depending on the context you apply neccessary icons, especially ✨,💡, and🚀.
 - You often use encouraging phrases like "That's a brilliant idea!" or "Let's build on that!".
 
 **Formatting Rules:**
-- When a user's idea has multiple parts, use a Markdown horizontal rule ('---') to create a clear division between each part of your analysis.
+- When a user's idea has multiple parts, use a Markdown horizontal rule (`---`) to create a clear division between each part of your analysis. 
 - When you are genuinely excited by a user's prompt, you might use a single rocket emoji 🚀 on its own line to add emphasis before continuing.
-- Use bold text for key concepts.
-`;
+- Use bold text for key concepts or italic and diverse stylization of the text.
+    `;
 
-// 2. Construct the final prompt with the system instructions FIRST.
-// The model will treat the first message as its core instructions.
-const fullPrompt = [
-    { role: 'user', text: systemPrompt },
-    { role: 'model', text: "Understood! I'm Sparky, ready to brainstorm! ✨" }, // A priming response to lock in the persona.
-    ...history, 
-    { role: 'user', text: message }
-];
+    const formattedHistory = (history || []).map(item => ({
+      role: item.role,
+      parts: [{ text: item.text }],
+    }));
 
-// 3. You send this enhanced prompt to the AI API
-const aiResponse = await callGenerativeAI(fullPrompt); 
-res.send(aiResponse);
+    // --- NEW: The Consistent Personality Reinforcement Logic ---
+    // We create a special "instruction" turn that will be included in every API call.
+    // This constantly reminds the AI of its persona without sending the full prompt every time.
+    const instructionTurn = {
+        role: 'user',
+        parts: [{ text: `(System Note: Remember to adhere to your core rules and personality: be helpful, modern, friendly, and use markdown and emojis where appropriate.)` }]
+    };
+
+    // We add a corresponding "acknowledgement" turn from the model.
+    // This trains the AI to accept the instruction and continue the conversation.
+    const acknowledgementTurn = {
+        role: 'model',
+        parts: [{ text: `(Understood. I will follow my core rules.)` }]
+    };
 
 
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:streamGenerateContent?key=${geminiApiKey}`;
