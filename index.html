@@ -129,35 +129,7 @@
         @keyframes sleekWave { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
         
         /* --- BUG FIX & NEW PC LAYOUT --- */
-        @media (min-width: 1024px) {
-            #sidebar {
-                transform: translateX(0);
-            }
-            #chat-area {
-                margin-left: var(--sidebar-width);
-            }
-            #menu-toggle, #sidebar-close-btn, #sidebar-overlay {
-                display: none !important;
-            }
-            #chat-messages {
-                scrollbar-width: auto;
-            }
-            #chat-messages::-webkit-scrollbar {
-                display: block;
-                width: 8px;
-            }
-            #chat-messages::-webkit-scrollbar-track {
-                background: transparent;
-            }
-            #chat-messages::-webkit-scrollbar-thumb {
-                background-color: #ccc;
-                border-radius: 10px;
-                border: 2px solid var(--background-color);
-            }
-            #chat-messages::-webkit-scrollbar-thumb:hover {
-                background-color: #aaa;
-            }
-        }
+        
     </style>
 </head>
 <body>
