@@ -25,7 +25,7 @@
             --ai-msg-bg: transparent; 
             --system-font: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             --sidebar-width: 320px;
-            --sidebar-width-collapsed: 80px;
+            --sidebar-width-collapsed: 0px; /* Collapse to nothing on mobile */
             --code-bg: #f0f2f5; 
             --code-text-color: #383a42;
         }
@@ -36,24 +36,46 @@
             -moz-osx-font-smoothing: grayscale;
             font-size: 15px;
         }
-        body.is-dragging { user-select: none; -webkit-user-select: none; }
-        body.is-dragging #chat-messages { overflow-y: hidden; }
-
-        #app-container { display: flex; height: 100dvh; width: 100vw; position: relative; }
-        #sidebar { width: var(--sidebar-width); max-width: 85vw; height: 100%; background-color: var(--sidebar-bg); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; position: fixed; left: 0; top: 0; transform: translateX(calc(-1 * var(--sidebar-width))); z-index: 1000; transition: transform 0.4s cubic-bezier(0.25, 0.1, 0.25, 1.0), width 0.3s ease-in-out; will-change: transform, width; }
-        #sidebar.no-transition { transition: none; }
-        .sidebar-header { padding: 1rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; user-select: none; -webkit-user-select: none; }
-        .sidebar-header h2 { margin: 0; font-size: 1.1rem; transition: opacity 0.2s ease; }
         
+        /* --- NEW LAYOUT: Flexbox based for stability --- */
+        #app-container { display: flex; height: 100dvh; }
+        #sidebar {
+            width: var(--sidebar-width);
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0; /* Prevents sidebar from shrinking */
+            transition: margin-left 0.4s cubic-bezier(0.25, 0.1, 0.25, 1.0);
+        }
+        #chat-area {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden; /* Important for child scrolling */
+        }
+        #chat-messages {
+            flex-grow: 1;
+            overflow-y: auto; /* This is now the ONLY scrolling element */
+            padding: 1rem;
+        }
+        .message-wrapper {
+            width: 100%;
+            max-width: 960px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        /* --- End of New Layout --- */
+
+        .sidebar-header { padding: 1rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; user-select: none; }
+        .sidebar-header h2 { margin: 0; font-size: 1.1rem; }
         .sidebar-header-actions { display: flex; align-items: center; gap: 0.25rem; }
         .sidebar-action-btn { font-size: 1.5rem; background: none; border: none; cursor: pointer; color: var(--text-color); padding: 0.5rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; transition: transform 0.3s ease; }
         .sidebar-action-btn:hover { background-color: #dcdce0; }
         #new-chat-btn { font-size: 1.5rem; }
-        #sidebar-close-btn { font-size: 2rem; line-height: 1; padding-bottom: 5px; }
         #sidebar-collapse-btn { display: none; }
 
-        #chat-history-list { flex-grow: 1; overflow-y: auto; padding: 0.5rem 0; user-select: none; -webkit-user-select: none; transition: opacity 0.2s ease; }
-        
+        #chat-history-list { flex-grow: 1; overflow-y: auto; padding: 0.5rem 0; user-select: none; }
         .chat-history-item { position: relative; display: flex; align-items: center; justify-content: space-between; padding: 0.6rem 1rem; cursor: pointer; border-bottom: 1px solid var(--border-color); font-size: 0.9rem; }
         .chat-title-container { flex-grow: 1; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; padding-right: 1rem; }
         .rename-input { font: inherit; border: 1px solid var(--primary-accent); border-radius: 4px; padding: 0.2rem 0.4rem; width: 100%; box-sizing: border-box;}
@@ -66,41 +88,25 @@
         .actions-dropdown button:hover { background-color: var(--sidebar-bg); }
         .actions-dropdown .delete-action { color: #d92d20; }
         .chat-history-item.active { background-color: #dcdce0; font-weight: 500; }
-        .sidebar-footer { padding: 1rem; border-top: 1px solid var(--border-color); transition: opacity 0.2s ease; flex-shrink: 0; user-select: none; -webkit-user-select: none; }
+        .sidebar-footer { padding: 1rem; border-top: 1px solid var(--border-color); flex-shrink: 0; user-select: none; }
         #logout-btn { width: 100%; padding: 0.5rem; background: none; color: var(--text-color); border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; font-size: 1rem; display: none; align-items: center; gap: 0.75rem; text-align: left; }
         #logout-btn:hover { background-color: #e9e9eb; }
         #user-avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
         body.logged-in #logout-btn { display: flex; }
 
-        #chat-area { display: flex; flex-direction: column; flex: 1; min-width: 0; overflow: hidden; transition: margin-left 0.3s ease-in-out; }
-        #sidebar-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.2); opacity: 0; z-index: 999; pointer-events: none; transition: opacity 0.4s ease; }
-        body.sidebar-open #sidebar-overlay { opacity: 1; pointer-events: auto; }
-        body.sidebar-open #chat-area { filter: brightness(0.9); }
-        #menu-toggle { position: fixed; top: 10px; left: 12px; z-index: 1001; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border-color); background: rgba(255, 255, 255, 0.7); -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px); font-size: 1.5rem; color: var(--text-color); cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: center; padding: 0; transition: all 0.2s ease; }
-        #menu-toggle:hover { background: #fff; transform: scale(1.05); }
-        
         #chat-header { padding: 0.5rem 1rem; border-bottom: none; display: flex; align-items: center; justify-content: center; background: var(--background-color); z-index: 10; }
         #chat-header h1 { font-size: 1.1rem; margin: 0; }
         
-        #chat-messages { flex-grow: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; min-height: 0; width: 100%; max-width: 960px; margin-left: auto; margin-right: auto; box-sizing: border-box; scrollbar-width: none; -ms-overflow-style: none; touch-action: pan-y; scroll-behavior: smooth; padding-bottom: 30vh; }
-        #chat-messages::-webkit-scrollbar { display: none; }
-        
-        .message-container { max-width: 85%; margin-bottom: 1rem; border-radius: 18px; line-height: 1.7; word-wrap: break-word; opacity: 0; transform: translateY(15px); animation: fadeInAndRise 0.4s ease forwards; }
-        .message-container.ai { padding: 0.75rem 1.1rem; }
-        #chat-messages.is-loading-history .message-container { animation: none; opacity: 1; transform: none; }
-        @keyframes fadeInAndRise { to { opacity: 1; transform: translateY(0); } }
-        @keyframes fadeInContainerOnly { from { opacity: 0; } to { opacity: 1; } }
-        .message-container p:first-child { margin-top: 0; }
-        .message-container p:last-child { margin-bottom: 0; }
+        .message-container { max-width: 100%; margin-bottom: 1rem; border-radius: 18px; line-height: 1.7; word-wrap: break-word; }
         .message-container.user { padding: 0.75rem 1.1rem; background-color: var(--user-msg-bg); align-self: flex-end; border-bottom-right-radius: 4px; }
-        .message-container.ai { background-color: var(--ai-msg-bg); align-self: flex-start; border: none; transform: none; animation: fadeInContainerOnly 0.2s ease forwards; }
+        .message-container.ai { padding: 0.75rem 1.1rem; background-color: var(--ai-msg-bg); align-self: flex-start; border: none; }
         .message-container.ai strong, .message-container.ai b { font-weight: 600; }
         .message-container.ai h1, .message-container.ai h2, .message-container.ai h3 { margin-top: 1.2rem; margin-bottom: 0.5rem; line-height: 1.3; }
-        .welcome-message { align-self: center; text-align: center; margin-top: 2rem; border: none !important; padding: 0 !important; animation: fadeInAndRise 0.4s ease forwards; }
+        .welcome-message { align-self: center; text-align: center; margin-top: 2rem; border: none !important; padding: 0 !important; }
         #login-btn { margin-top: 1rem; padding: 0.75rem 1.5rem; background-color: var(--primary-accent); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; }
         
         #chat-input-container { padding: 0.5rem 1rem; border-top: none; background-color: var(--background-color); }
-        #chat-form { display: flex; align-items: flex-end; gap: 0.75rem; }
+        #chat-form { display: flex; align-items: flex-end; gap: 0.75rem; max-width: 960px; margin: 0 auto; }
         #chat-input { flex-grow: 1; border: 1px solid #ddd; background-color: #f0f0f0; border-radius: 20px; padding: 0.8rem 1.2rem; font-size: 1rem; font-family: var(--system-font); resize: none; max-height: 120px; overflow-y: auto; line-height: 1.5; transition: background-color 0.2s ease, border-color 0.2s ease; }
         #chat-input:focus { outline: none; border-color: var(--primary-accent); background-color: var(--background-color); }
         #send-btn { background: var(--primary-accent); border: none; border-radius: 50%; width: 44px; height: 44px; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: transform 0.1s ease; }
@@ -132,10 +138,9 @@
         /* --- BUG FIX & NEW PC LAYOUT --- */
         @media (min-width: 1024px) {
             #sidebar {
-                transform: translateX(0);
-            }
-            #chat-area {
-                margin-left: var(--sidebar-width);
+                position: static; /* No longer fixed */
+                transform: none;
+                transition: width 0.3s ease-in-out;
             }
             #menu-toggle, #sidebar-close-btn, #sidebar-overlay {
                 display: none !important;
@@ -164,11 +169,8 @@
 
             /* --- Collapsed Sidebar State --- */
             body.sidebar-collapsed #sidebar {
-                width: var(--sidebar-width-collapsed);
-                background: linear-gradient(180deg, #fdfdff, #f0f2f5, #fdfdff);
-            }
-            body.sidebar-collapsed #chat-area {
-                margin-left: var(--sidebar-width-collapsed);
+                width: 0;
+                border-right: none;
             }
             body.sidebar-collapsed .sidebar-header h2,
             body.sidebar-collapsed #chat-history-list,
@@ -184,7 +186,6 @@
 </head>
 <body>
     <div id="app-container">
-        <div id="sidebar-overlay"></div>
         <aside id="sidebar">
             <div class="sidebar-header">
                 <h2>Chat History</h2>
@@ -193,7 +194,6 @@
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
                     </button>
                     <button id="new-chat-btn" class="sidebar-action-btn" title="New Chat">+</button>
-                    <button id="sidebar-close-btn" class="sidebar-action-btn" title="Close Menu">×</button>
                 </div>
             </div>
             <div id="chat-history-list"></div>
@@ -209,7 +209,11 @@
                 <button id="menu-toggle">☰</button>
                 <h1>AI Chat</h1>
             </header>
-            <div id="chat-messages"><div class="message-container welcome-message"><p>Welcome! Login to start.</p><button id="login-btn">Login with Google</button></div></div>
+            <div id="chat-messages">
+                <div class="message-wrapper">
+                    <div class="message-container welcome-message"><p>Welcome! Login to start.</p><button id="login-btn">Login with Google</button></div>
+                </div>
+            </div>
             <footer id="chat-input-container"><form id="chat-form"><textarea id="chat-input" placeholder="Message AI..." rows="1" required></textarea><button type="submit" id="send-btn" title="Send Message"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button></form></footer>
         </main>
     </div>
@@ -256,7 +260,11 @@
                     currentUser = null; currentChatId = null; 
                     document.body.classList.remove('logged-in');
                     chatHistoryList.innerHTML = '';
-                    chatMessages.innerHTML = `<div class="message-container welcome-message"><p>Welcome! Login to start.</p><button id="login-btn">Login with Google</button></div>`;
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'message-wrapper';
+                    wrapper.innerHTML = `<div class="message-container welcome-message"><p>Welcome! Login to start.</p><button id="login-btn">Login with Google</button></div>`;
+                    chatMessages.innerHTML = '';
+                    chatMessages.appendChild(wrapper);
                     document.getElementById('login-btn').addEventListener('click', () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()));
                 }
             });
@@ -386,31 +394,11 @@
                 const chat = snapshot.val();
                 localChatHistory = chat.messages || []; currentChatId = chatId;
                 chatMessages.innerHTML = '';
-                chatMessages.classList.add('is-loading-history');
                 localChatHistory.forEach(msg => {
-                    const el = addMessageToUI(msg.role === 'model' ? 'ai' : 'user');
-                    if(msg.role === 'user') {
-                        el.querySelector('p').textContent = msg.text;
-                    } else { 
-                        el.innerHTML = msg.text;
-                        el.querySelectorAll('pre').forEach(pre => {
-                            const wrapper = document.createElement('div');
-                            wrapper.className = 'code-block-wrapper';
-                            pre.parentNode.insertBefore(wrapper, pre);
-                            wrapper.appendChild(pre);
-                            const codeText = pre.querySelector('code').innerText;
-                            const btn = document.createElement('button');
-                            btn.className = 'copy-btn';
-                            btn.innerHTML = `<span>Copy</span>`;
-                            btn.onclick = () => navigator.clipboard.writeText(codeText).then(() => { btn.querySelector('span').textContent = 'Copied!'; setTimeout(() => { btn.querySelector('span').textContent = 'Copy'; }, 2000); });
-                            wrapper.appendChild(btn);
-                            hljs.highlightElement(pre.querySelector('code'));
-                        });
-                    }
+                    addMessageToUI(msg.role === 'model' ? 'ai' : 'user', msg.text);
                 });
                 requestAnimationFrame(() => {
                     chatMessages.scrollTop = chatMessages.scrollHeight;
-                    chatMessages.classList.remove('is-loading-history');
                 });
                 document.querySelectorAll('.chat-history-item').forEach(item => { item.classList.toggle('active', item.dataset.chatId === chatId); });
                 closeSidebar();
@@ -437,19 +425,31 @@
             document.getElementById('new-chat-btn').addEventListener('click', startNewChat);
             function startNewChat() {
                 currentStreamId = null;
-                currentChatId = null; localChatHistory = []; chatMessages.innerHTML = ''; chatInput.value = ''; chatInput.style.height = 'auto'; chatInput.focus();
+                currentChatId = null; localChatHistory = []; 
+                const wrapper = document.createElement('div');
+                wrapper.className = 'message-wrapper';
+                chatMessages.innerHTML = '';
+                chatMessages.appendChild(wrapper);
+                chatInput.value = ''; chatInput.style.height = 'auto'; chatInput.focus();
                 document.querySelectorAll('.chat-history-item').forEach(item => item.classList.remove('active'));
                 closeSidebar();
             }
             function addMessageToUI(sender, text = '') { 
+                const wrapper = document.createElement('div');
+                wrapper.className = 'message-wrapper';
+
                 const m = document.createElement('div'); 
                 m.className = `message-container ${sender}`; 
+                
                 if (sender === 'user') {
                     const p = document.createElement('p');
                     p.textContent = text;
                     m.appendChild(p);
+                } else {
+                    // This will be populated by the streamResponse function
                 }
-                chatMessages.appendChild(m); 
+                wrapper.appendChild(m);
+                chatMessages.appendChild(wrapper); 
                 return m; 
             }
             
@@ -556,8 +556,6 @@
             const sidebar = document.getElementById('sidebar'); 
             const menuToggle = document.getElementById('menu-toggle'); 
             const sidebarOverlay = document.getElementById('sidebar-overlay');
-            const appContainer = document.getElementById('app-container');
-            const sidebarCloseBtn = document.getElementById('sidebar-close-btn');
             let menuToggleTimeout;
             
             document.addEventListener('click', (e) => {
@@ -581,77 +579,41 @@
                 document.body.classList.remove('sidebar-open'); 
             }; 
             menuToggle.addEventListener('click', (e) => { e.stopPropagation(); openSidebar(); });
-            sidebarCloseBtn.addEventListener('click', closeSidebar);
             
-            appContainer.addEventListener('click', (e) => {
-                const hotspotWidth = 80;
-                if (e.clientX <= hotspotWidth && !document.body.classList.contains('sidebar-open')) {
-                    menuToggle.classList.add('visible');
-                    clearTimeout(menuToggleTimeout);
-                    menuToggleTimeout = setTimeout(() => {
-                        menuToggle.classList.remove('visible');
-                    }, 3000);
-                }
-            });
-            sidebarOverlay.addEventListener('click', closeSidebar); 
-            
-            let isDragging = false, startX = 0, startY = 0, currentTranslate = 0, dragDirection = null;
+            // FIX: Disable dragging on PC
+            let isDragging = false, startX = 0, currentTranslate = 0;
             const dragStart = (e) => {
-                if (window.innerWidth >= 1024) return; // FIX: Disable dragging on PC
+                if (window.innerWidth >= 1024) return;
                 const t = e.type === 'touchstart' ? e.touches[0] : e;
-                const s = document.body.classList.contains('sidebar-open');
-                if (s) {
-                    if (t.target.closest('#chat-history-list') || t.target.closest('.sidebar-footer') || t.target.closest('.sidebar-header')) return;
-                }
-                if (!s && t.clientX > 80) return;
-
                 isDragging = true;
                 startX = t.clientX;
-                startY = t.clientY;
-                dragDirection = null;
                 sidebar.classList.add('no-transition');
-                currentTranslate = s ? 0 : -sidebar.offsetWidth;
+                currentTranslate = document.body.classList.contains('sidebar-open') ? 0 : -sidebar.offsetWidth;
+                document.body.classList.add('is-dragging');
             };
             const dragMove = (e) => {
                 if (!isDragging) return;
-                const t = e.type === 'touchmove' ? e.touches[0] : e;
-                const deltaX = t.clientX - startX;
-                const deltaY = t.clientY - startY;
-
-                if (dragDirection === null) {
-                    if (Math.abs(deltaX) > Math.abs(deltaY) + 3) {
-                        dragDirection = 'horizontal';
-                        document.body.classList.add('is-dragging');
-                    } else {
-                        dragDirection = 'vertical';
-                    }
-                }
-                if (dragDirection === 'horizontal') {
-                    e.preventDefault();
-                    const newTranslate = currentTranslate + deltaX;
-                    const s = Math.min(0, Math.max(-sidebar.offsetWidth, newTranslate));
-                    sidebar.style.transform = `translateX(${s}px)`;
-                    sidebarOverlay.style.opacity = 1 - (Math.abs(s) / sidebar.offsetWidth);
-                }
+                const t = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
+                const n = t - startX;
+                let s = Math.min(0, Math.max(-sidebar.offsetWidth, currentTranslate + n));
+                sidebar.style.transform = `translateX(${s}px)`;
+                sidebarOverlay.style.opacity = 1 - (Math.abs(s) / sidebar.offsetWidth);
             };
             const dragEnd = (e) => {
                 if (!isDragging) return;
-                if (dragDirection === 'horizontal') {
-                    const t = new DOMMatrix(getComputedStyle(sidebar).transform).m41;
-                    t > -sidebar.offsetWidth / 2 ? openSidebar() : closeSidebar();
-                }
                 isDragging = false;
-                dragDirection = null;
                 sidebar.classList.remove('no-transition');
                 sidebarOverlay.style.opacity = '';
                 document.body.classList.remove('is-dragging');
+                const t = new DOMMatrix(getComputedStyle(sidebar).transform).m41;
+                t > -sidebar.offsetWidth / 2 ? openSidebar() : closeSidebar();
             };
             document.body.addEventListener('mousedown', dragStart);
             document.body.addEventListener('mousemove', dragMove);
             document.body.addEventListener('mouseup', dragEnd);
             document.body.addEventListener('mouseleave', dragEnd);
-            document.body.addEventListener('touchstart', dragStart, { passive: false });
-            document.body.addEventListener('touchmove', dragMove, { passive: false });
+            document.body.addEventListener('touchstart', dragStart, { passive: true });
+            document.body.addEventListener('touchmove', dragMove, { passive: true });
             document.body.addEventListener('touchend', dragEnd);
         });
     </script>
