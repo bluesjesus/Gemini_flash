@@ -471,20 +471,38 @@
                     await fontsReadyPromise;
                     for (const sourceNode of Array.from(tempDiv.childNodes)) {
                         if (currentStreamId !== streamId) return; 
-                        if (sourceNode.tagName?.toLowerCase() === 'pre') {
-                            const wrapper = document.createElement('div');
-                            wrapper.className = 'code-block-wrapper';
-                            const codeText = sourceNode.querySelector('code').innerText;
-                            const btn = document.createElement('button');
-                            btn.className = 'copy-btn';
-                            btn.textContent = 'Copy Code';
-                            btn.onclick = () => navigator.clipboard.writeText(codeText).then(() => { btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = 'Copy Code'; }, 2000); });
-                            wrapper.appendChild(sourceNode.cloneNode(true));
-                            wrapper.appendChild(btn);
-                            container.appendChild(wrapper);
-                            hljs.highlightElement(wrapper.querySelector('code'));
-                            continue;
-                        }
+                       if (sourceNode.tagName?.toLowerCase() === 'pre') {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'code-block-wrapper';
+    
+    // --- THE FIX ---
+    // 1. Get the clean, original code text FIRST. 
+    // .textContent is more reliable than .innerText for this.
+    const cleanCodeText = sourceNode.querySelector('code').textContent;
+
+    // 2. Create the button and give it the clean text.
+    const btn = document.createElement('button');
+    btn.className = 'copy-btn';
+    btn.innerHTML = '<span>Copy Code</span>'; // Use a span for easy text changes
+    btn.onclick = () => {
+        navigator.clipboard.writeText(cleanCodeText).then(() => {
+            btn.querySelector('span').textContent = 'Copied!';
+            setTimeout(() => {
+                btn.querySelector('span').textContent = 'Copy Code';
+            }, 2000);
+        });
+    };
+    
+    // 3. Now, assemble the final structure for display.
+    wrapper.appendChild(sourceNode.cloneNode(true)); // The styled version
+    wrapper.appendChild(btn);
+    container.appendChild(wrapper);
+    
+    // 4. Finally, apply syntax highlighting to the displayed version.
+    hljs.highlightElement(wrapper.querySelector('code'));
+    
+    continue; // Move to the next block
+}
                         const newBlock = document.createElement(sourceNode.tagName || 'p');
                         container.appendChild(newBlock);
                         await processNode(sourceNode, newBlock, streamId);
