@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>AI Chat</title>
     
-    <!-- FONT FIX: Using "Inter" for a DeepSeek-like feel with best-practice preloading -->
+    <!-- FONT FIX: Using "Inter" for a DeepSeek-like feel -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -24,10 +24,10 @@
             --border-color: #e5e5e5;
             --user-msg-bg: #f0f2f5;
             --ai-msg-bg: transparent; 
-            /* FONT FIX: Switched to Inter for a DeepSeek aesthetic */
+            /* FONT FIX: Switched to Inter */
             --system-font: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            --sidebar-width: 320px;
-            --sidebar-width-collapsed: 0px;
+            --sidebar-width: 280px;
+            --sidebar-width-collapsed: 80px;
             --code-bg: #f0f2f5; 
             --code-text-color: #383a42;
         }
@@ -36,55 +36,27 @@
             margin: 0; padding: 0; font-family: var(--system-font); height: 100%; width: 100%; overflow: hidden; background-color: var(--background-color); color: var(--text-color);
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
-            /* FONT FIX: Smaller, more refined base font size like DeepSeek */
+            /* FONT FIX: Smaller, more refined base font size */
             font-size: 15px;
         }
         body.is-dragging { user-select: none; -webkit-user-select: none; }
         body.is-dragging #chat-messages { overflow-y: hidden; }
 
-        /* --- LAYOUT FIX: Using Flexbox for Stability --- */
-        #app-container { 
-            display: flex; 
-            height: 100dvh; 
-        }
-        #sidebar {
-            width: var(--sidebar-width);
-            background-color: var(--sidebar-bg);
-            border-right: 1px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
-            flex-shrink: 0; /* Prevents sidebar from shrinking */
-            transition: width 0.3s ease-in-out, margin-left 0.4s cubic-bezier(0.25, 0.1, 0.25, 1.0);
-        }
-        #chat-area {
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            overflow-y: hidden; /* Crucial for child scrolling */
-        }
-        #chat-messages {
-            flex-grow: 1;
-            overflow-y: auto; /* This is now the ONLY vertically scrolling element */
-            padding: 1rem;
-        }
-        .message-wrapper {
-            width: 100%;
-            max-width: 960px;
-            margin-left: auto;
-            margin-right: auto;
-            padding-bottom: 30vh;
-        }
-        /* --- End of Layout Fix --- */
-
-        .sidebar-header { padding: 1rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; user-select: none; }
+        #app-container { display: flex; height: 100dvh; width: 100vw; position: relative; }
+        #sidebar { width: var(--sidebar-width); max-width: 85vw; height: 100%; background-color: var(--sidebar-bg); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; position: fixed; left: 0; top: 0; transform: translateX(calc(-1 * var(--sidebar-width))); z-index: 1000; transition: transform 0.4s cubic-bezier(0.25, 0.1, 0.25, 1.0), width 0.3s ease-in-out; will-change: transform, width; }
+        #sidebar.no-transition { transition: none; }
+        .sidebar-header { padding: 1rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; user-select: none; -webkit-user-select: none; }
         .sidebar-header h2 { margin: 0; font-size: 1.1rem; transition: opacity 0.2s ease; }
+        
         .sidebar-header-actions { display: flex; align-items: center; gap: 0.25rem; }
         .sidebar-action-btn { font-size: 1.5rem; background: none; border: none; cursor: pointer; color: var(--text-color); padding: 0.5rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; transition: transform 0.3s ease; }
         .sidebar-action-btn:hover { background-color: #dcdce0; }
         #new-chat-btn { font-size: 1.5rem; }
+        #sidebar-close-btn { font-size: 2rem; line-height: 1; padding-bottom: 5px; }
         #sidebar-collapse-btn { display: none; }
 
-        #chat-history-list { flex-grow: 1; overflow-y: auto; padding: 0.5rem 0; user-select: none; transition: opacity 0.2s ease; }
+        #chat-history-list { flex-grow: 1; overflow-y: auto; padding: 0.5rem 0; user-select: none; -webkit-user-select: none; transition: opacity 0.2s ease; }
+        
         .chat-history-item { position: relative; display: flex; align-items: center; justify-content: space-between; padding: 0.6rem 1rem; cursor: pointer; border-bottom: 1px solid var(--border-color); font-size: 0.9rem; }
         .chat-title-container { flex-grow: 1; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; padding-right: 1rem; }
         .rename-input { font: inherit; border: 1px solid var(--primary-accent); border-radius: 4px; padding: 0.2rem 0.4rem; width: 100%; box-sizing: border-box;}
@@ -97,16 +69,26 @@
         .actions-dropdown button:hover { background-color: var(--sidebar-bg); }
         .actions-dropdown .delete-action { color: #d92d20; }
         .chat-history-item.active { background-color: #dcdce0; font-weight: 500; }
-        .sidebar-footer { padding: 1rem; border-top: 1px solid var(--border-color); flex-shrink: 0; user-select: none; }
+        .sidebar-footer { padding: 1rem; border-top: 1px solid var(--border-color); flex-shrink: 0; user-select: none; -webkit-user-select: none; transition: opacity 0.2s ease; }
         #logout-btn { width: 100%; padding: 0.5rem; background: none; color: var(--text-color); border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; font-size: 1rem; display: none; align-items: center; gap: 0.75rem; text-align: left; }
         #logout-btn:hover { background-color: #e9e9eb; }
         #user-avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
         body.logged-in #logout-btn { display: flex; }
 
+        #chat-area { display: flex; flex-direction: column; flex: 1; min-width: 0; overflow: hidden; transition: margin-left 0.3s ease-in-out; }
+        #sidebar-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.2); opacity: 0; z-index: 999; pointer-events: none; transition: opacity 0.4s ease; }
+        body.sidebar-open #sidebar-overlay { opacity: 1; pointer-events: auto; }
+        body.sidebar-open #chat-area { filter: brightness(0.9); }
+        #menu-toggle { position: fixed; top: 10px; left: 12px; z-index: 1001; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border-color); background: rgba(255, 255, 255, 0.7); -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px); font-size: 1.5rem; color: var(--text-color); cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: center; padding: 0; transition: all 0.2s ease; }
+        #menu-toggle:hover { background: #fff; transform: scale(1.05); }
+        
         #chat-header { padding: 0.5rem 1rem; border-bottom: none; display: flex; align-items: center; justify-content: center; background: var(--background-color); z-index: 10; }
         #chat-header h1 { font-size: 1.1rem; margin: 0; }
         
-        .message-container { max-width: 100%; margin-bottom: 1rem; border-radius: 18px; line-height: 1.7; word-wrap: break-word; }
+        #chat-messages { flex-grow: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; min-height: 0; width: 100%; max-width: 960px; margin-left: auto; margin-right: auto; box-sizing: border-box; scrollbar-width: none; -ms-overflow-style: none; touch-action: pan-y; scroll-behavior: smooth; padding-bottom: 30vh; }
+        #chat-messages::-webkit-scrollbar { display: none; }
+        
+        .message-container { max-width: 85%; margin-bottom: 1rem; border-radius: 18px; line-height: 1.7; word-wrap: break-word; }
         .message-container.user { padding: 0.75rem 1.1rem; background-color: var(--user-msg-bg); align-self: flex-end; border-bottom-right-radius: 4px; }
         .message-container.ai { padding: 0.75rem 1.1rem; background-color: var(--ai-msg-bg); align-self: flex-start; border: none; }
         .message-container.ai strong, .message-container.ai b { font-weight: 600; }
@@ -144,22 +126,15 @@
         .thinking-indicator span:nth-child(3) { animation-delay: 0.2s; }
         @keyframes sleekWave { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
         
-        /* --- MOBILE LAYOUT --- */
-        @media (max-width: 1023px) {
-            #sidebar {
-                position: fixed;
-                margin-left: calc(-1 * var(--sidebar-width));
-            }
-            body.sidebar-open #sidebar {
-                margin-left: 0;
-            }
-            #sidebar-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.2); opacity: 0; z-index: 999; pointer-events: none; transition: opacity 0.4s ease; }
-            body.sidebar-open #sidebar-overlay { opacity: 1; pointer-events: auto; }
-            body.sidebar-open #chat-area { filter: brightness(0.9); }
-        }
-
-        /* --- PC LAYOUT --- */
+        /* --- BUG FIX & NEW PC LAYOUT --- */
         @media (min-width: 1024px) {
+            #sidebar {
+                transform: translateX(0);
+                position: static;
+            }
+            #chat-area {
+                margin-left: 0; /* Let flexbox handle it */
+            }
             #menu-toggle, #sidebar-close-btn, #sidebar-overlay {
                 display: none !important;
             }
@@ -203,7 +178,6 @@
     </style>
 </head>
 <body>
-    <!-- HTML is now simpler and more robust -->
     <div id="app-container">
         <aside id="sidebar">
             <div class="sidebar-header">
@@ -233,15 +207,13 @@
                 <h1>AI Chat</h1>
             </header>
             <div id="chat-messages">
-                <!-- Messages now get a wrapper -->
+                <!-- Messages will be injected here inside a wrapper -->
             </div>
             <footer id="chat-input-container"><form id="chat-form"><textarea id="chat-input" placeholder="Message AI..." rows="1" required></textarea><button type="submit" id="send-btn" title="Send Message"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button></form></footer>
         </main>
     </div>
 
     <script>
-        // All your JavaScript remains the same, but I have included it
-        // here for a complete, copy-pasteable solution.
         document.addEventListener('DOMContentLoaded', () => {
             const fontsReadyPromise = document.fonts.ready;
             const firebaseConfig = {
@@ -279,11 +251,7 @@
                     currentUser = null; currentChatId = null; 
                     document.body.classList.remove('logged-in');
                     chatHistoryList.innerHTML = '';
-                    const wrapper = document.createElement('div');
-                    wrapper.className = 'message-wrapper';
-                    wrapper.innerHTML = `<div class="message-container welcome-message"><p>Welcome! Login to start.</p><button id="login-btn">Login with Google</button></div>`;
-                    chatMessages.innerHTML = '';
-                    chatMessages.appendChild(wrapper);
+                    chatMessages.innerHTML = `<div class="message-wrapper"><div class="message-container welcome-message"><p>Welcome! Login to start.</p><button id="login-btn">Login with Google</button></div></div>`;
                     document.getElementById('login-btn').addEventListener('click', () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()));
                 }
             });
