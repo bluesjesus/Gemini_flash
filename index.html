@@ -24,9 +24,9 @@
             --border-color: #e5e5e5;
             --user-msg-bg: #f0f2f5;
             --ai-msg-bg: transparent; 
-            /* FONT FIX: Switched to Inter for a DeepSeek aesthetic */
             --system-font: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            --sidebar-width: 280px;
+            --sidebar-width: 320px;
+            --sidebar-width-collapsed: 0px;
             --code-bg: #f0f2f5; 
             --code-text-color: #383a42;
         }
@@ -35,23 +35,54 @@
             margin: 0; padding: 0; font-family: var(--system-font); height: 100%; width: 100%; overflow: hidden; background-color: var(--background-color); color: var(--text-color);
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
-            /* FONT FIX: Smaller, more refined base font size like DeepSeek */
             font-size: 15px;
         }
         body.is-dragging { user-select: none; -webkit-user-select: none; }
         body.is-dragging #chat-messages { overflow-y: hidden; }
+                /* --- NEW LAYOUT: Flexbox based for stability --- */
+        #app-container { 
+            display: flex; 
+            height: 100dvh; 
+        }
+        #sidebar {
+            width: var(--sidebar-width);
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0; /* Prevents sidebar from shrinking */
+            transition: width 0.3s ease-in-out, margin-left 0.4s cubic-bezier(0.25, 0.1, 0.25, 1.0);
+        }
+        #chat-area {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: hidden; /* Crucial for child scrolling */
+        }
+        #chat-messages {
+            flex-grow: 1;
+            overflow-y: auto; /* This is now the ONLY vertically scrolling element */
+            padding: 1rem;
+        }
+        .message-wrapper {
+            width: 100%;
+            max-width: 960px;
+            margin-left: auto;
+            margin-right: auto;
+            padding-bottom: 30vh;
+        }
+        /* --- End of New Layout --- */
 
-        #app-container { display: flex; height: 100dvh; width: 100vw; position: relative; }
-        #sidebar { width: var(--sidebar-width); max-width: 85vw; height: 100%; background-color: var(--sidebar-bg); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; position: fixed; left: 0; top: 0; transform: translateX(calc(-1 * var(--sidebar-width))); transition: transform 0.4s cubic-bezier(0.25, 0.1, 0.25, 1.0); z-index: 1000; will-change: transform; }
-        #sidebar.no-transition { transition: none; }
-        .sidebar-header { padding: 1rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
-        .sidebar-header h2 { margin: 0; font-size: 1.1rem; user-select: none; -webkit-user-select: none; }
         
+        
+        #sidebar.no-transition { transition: none; }
+        .sidebar-header { padding: 1rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; user-select: none; }
+        .sidebar-header h2 { margin: 0; font-size: 1.1rem; transition: opacity 0.2s ease; }
         .sidebar-header-actions { display: flex; align-items: center; gap: 0.25rem; }
-        .sidebar-action-btn { font-size: 1.5rem; background: none; border: none; cursor: pointer; color: var(--text-color); padding: 0.5rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; }
+        .sidebar-action-btn { font-size: 1.5rem; background: none; border: none; cursor: pointer; color: var(--text-color); padding: 0.5rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; transition: transform 0.3s ease; }
         .sidebar-action-btn:hover { background-color: #dcdce0; }
         #new-chat-btn { font-size: 1.5rem; }
-        #sidebar-close-btn { font-size: 2rem; line-height: 1; padding-bottom: 5px; }
+        #sidebar-collapse-btn { display: none; }
 
         #chat-history-list { flex-grow: 1; overflow-y: auto; padding: 0.5rem 0; user-select: none; -webkit-user-select: none; }
         
@@ -73,7 +104,7 @@
         #user-avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
         body.logged-in #logout-btn { display: flex; }
 
-        #chat-area { display: flex; flex-direction: column; flex: 1; min-width: 0; overflow: hidden; }
+       
         #sidebar-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.2); opacity: 0; z-index: 999; pointer-events: none; transition: opacity 0.4s ease; }
         body.sidebar-open #sidebar-overlay { opacity: 1; pointer-events: auto; }
         body.sidebar-open #chat-area { filter: brightness(0.9); }
@@ -82,8 +113,7 @@
         #chat-header { padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; background: var(--background-color); z-index: 10; }
         #chat-header h1 { font-size: 1.1rem; margin: 0; }
         
-        #chat-messages { flex-grow: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; min-height: 0; width: 100%; max-width: 1160px; margin-left: auto; margin-right: auto; box-sizing: border-box; scrollbar-width: none; -ms-overflow-style: none; touch-action: pan-y; scroll-behavior: smooth; padding-bottom: 30vh; }
-        #chat-messages::-webkit-scrollbar { display: none; }
+        
         #chat-messages-container {
     position: relative; /* Establishes a positioning context */
     flex-grow: 1;
@@ -157,17 +187,76 @@
         .thinking-indicator span:nth-child(3) { animation-delay: 0.2s; }
         @keyframes sleekWave { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
         
-        /* --- BUG FIX & NEW PC LAYOUT --- */
         
+        /* --- BUG FIX & NEW PC LAYOUT --- */
+                /* --- BUG FIX & NEW PC LAYOUT --- */
+        @media (min-width: 1024px) {
+            #sidebar {
+                position: static; /* This is the key fix. It's no longer 'fixed' on PC. */
+                transform: none;
+            }
+            #menu-toggle, #sidebar-close-btn, #sidebar-overlay {
+                display: none !important;
+            }
+            #sidebar-collapse-btn {
+                display: flex;
+            }
+            #chat-messages {
+                scrollbar-width: auto;
+            }
+            #chat-messages::-webkit-scrollbar {
+                display: block;
+                width: 8px;
+            }
+            #chat-messages::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            #chat-messages::-webkit-scrollbar-thumb {
+                background-color: #ccc;
+                border-radius: 10px;
+                border: 2px solid var(--background-color);
+            }
+            #chat-messages::-webkit-scrollbar-thumb:hover {
+                background-color: #aaa;
+            }
+
+            /* --- Collapsed Sidebar State --- */
+            body.sidebar-collapsed #sidebar {
+                width: 0;
+                border-right: none;
+            }
+            body.sidebar-collapsed .sidebar-header h2,
+            body.sidebar-collapsed #chat-history-list,
+            body.sidebar-collapsed .sidebar-footer {
+                opacity: 0;
+                pointer-events: none;
+            }
+            body.sidebar-collapsed #sidebar-collapse-btn {
+                transform: rotate(180deg);
+            }
+        }
+
+        /* --- MOBILE-ONLY RULES --- */
+        @media (max-width: 1023px) {
+            #sidebar {
+                position: fixed;
+                transform: translateX(calc(-1 * var(--sidebar-width)));
+            }
+            body.sidebar-open #sidebar {
+                transform: translateX(0);
+            }
+        }
     </style>
 </head>
 <body>
     <div id="app-container">
-        <div id="sidebar-overlay"></div>
         <aside id="sidebar">
             <div class="sidebar-header">
                 <h2>Chat History</h2>
                 <div class="sidebar-header-actions">
+                    <button id="sidebar-collapse-btn" class="sidebar-action-btn" title="Collapse sidebar">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                    </button>
                     <button id="new-chat-btn" class="sidebar-action-btn" title="New Chat">+</button>
                     <button id="sidebar-close-btn" class="sidebar-action-btn" title="Close Menu">×</button>
                 </div>
@@ -180,14 +269,16 @@
                 </button>
             </div>
         </aside>
-                <main id="chat-area">
+        
+        <div id="sidebar-overlay"></div>
+
+        <main id="chat-area">
             <header id="chat-header">
                 <button id="menu-toggle">☰</button>
                 <h1>AI Chat</h1>
             </header>
-            <!-- The new container is added here -->
-            <div id="chat-messages-container"> 
-                <div id="chat-messages"><div class="message-container welcome-message"><p>Welcome! Login to start.</p><button id="login-btn">Login with Google</button></div></div>
+            <div id="chat-messages">
+                <!-- Messages will be injected here inside a wrapper -->
             </div>
             <footer id="chat-input-container"><form id="chat-form"><textarea id="chat-input" placeholder="Message AI..." rows="1" required></textarea><button type="submit" id="send-btn" title="Send Message"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button></form></footer>
         </main>
