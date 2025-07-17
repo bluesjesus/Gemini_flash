@@ -146,10 +146,10 @@
     to { opacity: 0.6; } /* Fade in to a semi-transparent state */
 }
 .word-anim {
-    opacity: 0; 
+    opacity: 0.2; 
     display: inline-block;
-    animation: cometFade 0.2s ease-out forwards;
-    transition: opacity 0.5s ease-in-out; /* A second transition for the final fade-in */
+    animation: cometFade 0.1s ease-out forwards;
+    transition: opacity 0.65s ease-in-out; /* A second transition for the final fade-in */
 }
 .word-anim.is-visible {
     opacity: 1; /* The final, fully opaque state */
@@ -430,7 +430,7 @@
             }
             
             async function processNode(sourceNode, targetContainer, streamId) {
-                const WORD_STREAM_DELAY = 3; 
+                const WORD_STREAM_DELAY = 2; 
 
                 for (const child of Array.from(sourceNode.childNodes)) {
                     if (currentStreamId !== streamId) return; 
@@ -443,6 +443,10 @@
                                 span.className = 'word-anim';
                                 span.textContent = word;
                                 targetContainer.appendChild(span);
+                                animatedWords.push(span);
+                                if (animatedWords.length > 5) { // The "tail" length
+                                  animatedWords[animatedWords.length - 6].classList.add('is-visible');
+                            }
                                 await new Promise(res => setTimeout(res, WORD_STREAM_DELAY));
                             } else { 
                                 targetContainer.appendChild(document.createTextNode(word)); 
@@ -512,9 +516,14 @@
                         await processNode(sourceNode, newBlock, streamId);
                         await new Promise(res => setTimeout(res, PAUSE_AFTER_BLOCK));
                     }
+                    // At the end of streamResponse, before the onComplete call
+                    if (currentStreamId === streamId) {
+                    animatedWords.forEach(word => word.classList.add('is-visible'));
+                }
                     if (currentStreamId === streamId && onComplete) {
-                        onComplete(container.innerHTML);
-                    }
+                    onComplete(container.innerHTML);
+                }
+                    
                 });
             }
 
