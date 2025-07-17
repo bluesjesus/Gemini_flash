@@ -18,7 +18,7 @@
     <style>
         :root {
             --background-color: #ffffff;
-            --text-color: #1d1d1f;
+            --text-color: #302f30;
             --primary-accent: #1a1a1a;
             --sidebar-bg: #f7f7f8;
             --border-color: #e5e5e5;
@@ -36,7 +36,7 @@
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
             /* FONT FIX: Smaller, more refined base font size like DeepSeek */
-            font-size: 15px;
+            font-size: 16px;
         }
         body.is-dragging { user-select: none; -webkit-user-select: none; }
         body.is-dragging #chat-messages { overflow-y: hidden; }
@@ -112,7 +112,7 @@
 }
 
 #chat-messages {
-    height: 100%; /* Make it fill the new container */
+    height: 100%;
 }
         .message-container { max-width: 85%; margin-bottom: 1rem; border-radius: 18px; line-height: 1.7; word-wrap: break-word; opacity: 0; transform: translateY(15px); animation: fadeInAndRise 0.4s ease forwards; }
         .message-container.ai { padding: 0.75rem 1.1rem; }
@@ -152,7 +152,7 @@
             }
                 .word-anim {
                 display: inline-block;
-                animation: gentleColor 0.4s ease-in-out forwards;
+                animation: gentleColor 0.45s ease-in-out forwards;
             }
 
         .thinking-indicator { display: flex; gap: 4px; align-items: center; padding: 0.75rem 1.1rem; height: 1.5rem; }
