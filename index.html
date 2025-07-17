@@ -152,7 +152,7 @@
             }
                 .word-anim {
                 display: inline-block;
-                animation: gentleColor 0.5s ease-in-out forwards;
+                animation: gentleColor 0.4s ease-in-out forwards;
             }
 
         .thinking-indicator { display: flex; gap: 4px; align-items: center; padding: 0.75rem 1.1rem; height: 1.5rem; }
@@ -430,7 +430,7 @@
             }
             
             async function processNode(sourceNode, targetContainer, streamId) {
-                const WORD_STREAM_DELAY = 15; 
+                const WORD_STREAM_DELAY = 9; 
 
                 for (const child of Array.from(sourceNode.childNodes)) {
                     if (currentStreamId !== streamId) return; 
@@ -460,7 +460,7 @@
                 const streamId = Date.now(); 
                 currentStreamId = streamId; 
 
-                const PAUSE_AFTER_BLOCK = 15;
+                const PAUSE_AFTER_BLOCK = 12;
                 marked.setOptions({
                     highlight: (code, lang) => hljs.getLanguage(lang) ? hljs.highlight(code, { language: lang }).value : hljs.highlightAuto(code).value,
                     langPrefix: 'hljs language-', gfm: true, breaks: true,
