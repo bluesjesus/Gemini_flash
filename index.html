@@ -36,7 +36,7 @@
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
             /* FONT FIX: Smaller, more refined base font size like DeepSeek */
-            font-size: 16px;
+            font-size: 17px;
         }
         body.is-dragging { user-select: none; -webkit-user-select: none; }
         body.is-dragging #chat-messages { overflow-y: hidden; }
@@ -112,7 +112,7 @@
 }
 
 #chat-messages {
-    height: 100%;
+    height: 100%; /* Make it fill the new container */
 }
         .message-container { max-width: 85%; margin-bottom: 1rem; border-radius: 18px; line-height: 1.7; word-wrap: break-word; opacity: 0; transform: translateY(15px); animation: fadeInAndRise 0.4s ease forwards; }
         .message-container.ai { padding: 0.75rem 1.1rem; }
@@ -141,19 +141,15 @@
         .copy-btn:hover { background: #dcdce0; }
         .copy-btn:active { transform: scale(0.95); }
         
-                   /* --- OPTION 10: The Gentle Color Fade --- */
-            @keyframes gentleColor {
-                from {
-                    color: #999;
-                }
-                to {
-                    color: var(--text-color);
-                }
-            }
-                .word-anim {
-                display: inline-block;
-                animation: gentleColor 0.45s ease-in-out forwards;
-            }
+        @keyframes fastFadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .word-anim {
+            opacity: 0; 
+            display: inline-block;
+            animation: fastFadeIn 0.35s ease-out forwards;
+        }
 
         .thinking-indicator { display: flex; gap: 4px; align-items: center; padding: 0.75rem 1.1rem; height: 1.5rem; }
         .thinking-indicator span { width: 7px; height: 7px; background-color: var(--primary-accent); border-radius: 50%; animation: sleekWave 1.2s ease-in-out infinite; }
@@ -430,7 +426,7 @@
             }
             
             async function processNode(sourceNode, targetContainer, streamId) {
-                const WORD_STREAM_DELAY = 9; 
+                const WORD_STREAM_DELAY = 10; 
 
                 for (const child of Array.from(sourceNode.childNodes)) {
                     if (currentStreamId !== streamId) return; 
@@ -460,7 +456,7 @@
                 const streamId = Date.now(); 
                 currentStreamId = streamId; 
 
-                const PAUSE_AFTER_BLOCK = 12;
+                const PAUSE_AFTER_BLOCK = 10;
                 marked.setOptions({
                     highlight: (code, lang) => hljs.getLanguage(lang) ? hljs.highlight(code, { language: lang }).value : hljs.highlightAuto(code).value,
                     langPrefix: 'hljs language-', gfm: true, breaks: true,
