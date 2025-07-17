@@ -153,7 +153,7 @@
 .char-anim { /* Note: Use .char-anim for this one */
     opacity: 0;
     display: inline-block;
-    animation: typewriter 0.1s forwards;
+    animation: typewriter 0.02s forwards;
 }
 
         .thinking-indicator { display: flex; gap: 4px; align-items: center; padding: 0.75rem 1.1rem; height: 1.5rem; }
@@ -436,18 +436,16 @@
                 for (const child of Array.from(sourceNode.childNodes)) {
                     if (currentStreamId !== streamId) return; 
                     if (child.nodeType === Node.TEXT_NODE) {
-                        const words = child.nodeValue.split(/(\s+)/);
-                        for (const word of words) {
-                            if (currentStreamId !== streamId) return; 
-                            if (word.trim().length > 0) {
+                        // --- THIS IS THE NEW LETTER-BY-LETTER LOGIC ---
+                    const text = child.nodeValue;
+                    for (const char of text.split('')) { // Loop through each character
+                                if (currentStreamId !== streamId) return;
                                 const span = document.createElement('span');
-                                span.className = 'word-anim';
-                                span.textContent = word;
+                                span.className = 'char-anim'; // <-- Use the new class name
+                                    span.textContent = char;
                                 targetContainer.appendChild(span);
                                 await new Promise(res => setTimeout(res, WORD_STREAM_DELAY));
-                            } else { 
-                                targetContainer.appendChild(document.createTextNode(word)); 
-                            }
+                            }}
                         }
                     } else if (child.nodeType === Node.ELEMENT_NODE) {
                         const newTargetElement = document.createElement(child.tagName);
