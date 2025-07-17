@@ -142,22 +142,18 @@
         .copy-btn:active { transform: scale(0.95); }
         
         /* --- OPTION 1: Ghostly Typewriter --- */
-@keyframes prismaticFocus {
+@keyframes typewriter {
     from {
         opacity: 0;
-        color: var(--primary-accent);
-        filter: blur(3px);
     }
     to {
         opacity: 1;
-        color: var(--text-color);
-        filter: blur(0);
     }
 }
-.word-anim {
-    opacity: 0; 
+.char-anim { /* Note: Use .char-anim for this one */
+    opacity: 0;
     display: inline-block;
-    animation: prismaticFocus 0.3s cubic-bezier(0.215, 0.610, 0.355, 1.000) forwards;
+    animation: typewriter 0.1s forwards;
 }
 
         .thinking-indicator { display: flex; gap: 4px; align-items: center; padding: 0.75rem 1.1rem; height: 1.5rem; }
