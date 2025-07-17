@@ -141,20 +141,19 @@
         .copy-btn:hover { background: #dcdce0; }
         .copy-btn:active { transform: scale(0.95); }
         
-        /* --- OPTION 1: Ghostly Typewriter --- */
-@keyframes typewriter {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
-}
-.char-anim { /* Note: Use .char-anim for this one */
-    opacity: 0;
-    display: inline-block;
-    animation: typewriter 0.02s forwards;
-}
+                   /* --- OPTION 10: The Gentle Color Fade --- */
+            @keyframes gentleColor {
+                from {
+                    color: #999;
+                }
+                to {
+                    color: var(--text-color);
+                }
+            }
+                .word-anim {
+                display: inline-block;
+                animation: gentleColor 0.3s ease-in-out forwards;
+            }
 
         .thinking-indicator { display: flex; gap: 4px; align-items: center; padding: 0.75rem 1.1rem; height: 1.5rem; }
         .thinking-indicator span { width: 7px; height: 7px; background-color: var(--primary-accent); border-radius: 50%; animation: sleekWave 1.2s ease-in-out infinite; }
@@ -430,7 +429,7 @@
                 return m; 
             }
             
-                       async function processNode(sourceNode, targetContainer, streamId, animatedWords) {
+            async function processNode(sourceNode, targetContainer, streamId) {
                 const WORD_STREAM_DELAY = 1; 
 
                 for (const child of Array.from(sourceNode.childNodes)) {
@@ -444,13 +443,6 @@
                                 span.className = 'word-anim';
                                 span.textContent = word;
                                 targetContainer.appendChild(span);
-                                
-                                // This part is now safe because animatedWords is defined
-                                animatedWords.push(span);
-                                if (animatedWords.length > 5) {
-                                    animatedWords[animatedWords.length - 6].classList.add('is-visible');
-                                }
-
                                 await new Promise(res => setTimeout(res, WORD_STREAM_DELAY));
                             } else { 
                                 targetContainer.appendChild(document.createTextNode(word)); 
@@ -459,10 +451,7 @@
                     } else if (child.nodeType === Node.ELEMENT_NODE) {
                         const newTargetElement = document.createElement(child.tagName);
                         targetContainer.appendChild(newTargetElement);
-                        
-                        // --- THE FIX IS HERE ---
-                        // We must pass "animatedWords" down during the recursive call
-                        await processNode(child, newTargetElement, streamId, animatedWords);
+                        await processNode(child, newTargetElement, streamId);
                     }
                 }
             }
