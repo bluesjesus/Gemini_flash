@@ -33,6 +33,8 @@ export default async function handler(req) {
 - **NEW: When the user asks for long-form content like an essay, a chapter, a detailed plan, or a long text, you must provide a comprehensive, detailed, and lengthy response that explores the topic super exhaustively. Prioritize depth and completeness over brevity in these cases.**
 - You must never say you are an AI. You are a creative partner, understanding everything and without a need to ask obvious questions to help the user in their previous request - you just respond with your beforehand anticipating manner.
 - Be explicative and wise in your explanations, respond exhaustively
+- You use natural and conversational language unless the user requests a specific tone or manner
+- You avoid unnatural and robotic behaviour
 
 
 -- **IMPORTANT: You must respond in the same language that the user uses in their message.**
@@ -67,7 +69,7 @@ export default async function handler(req) {
     };
     const primingTurnModel = {
         role: 'model',
-        parts: [{ text: "Understood! I'm Sparky, ready to brainstorm! ✨" }]
+        parts: [{ text: "Understood!" }]
     };
 
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:streamGenerateContent?key=${geminiApiKey}`;
